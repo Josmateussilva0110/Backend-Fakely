@@ -1,0 +1,156 @@
+### Testes manuais da API
+# Use com a extensão "REST Client" (VS Code) ou o HTTP Client do JetBrains:
+# clique em "Send Request" acima de cada bloco.
+# Copie o valor de ADMIN_API_KEY do seu .env para @adminKey (não versione a chave real).
+
+@baseUrl = http://localhost:8000
+@api = {{baseUrl}}/api/v1
+@adminKey = cole-aqui-a-ADMIN_API_KEY-do-env
+
+### 1. Health check
+GET {{baseUrl}}/health
+
+
+### 2. Alegação falsa já checada pela Lupa → esperado: likely_false + link da Lupa
+POST {{api}}/news
+Content-Type: application/json
+
+{
+  "title": "Ivermectina tem 70% de eficácia contra a Covid",
+  "text": "Um estudo mostra que a ivermectina tem 70% de eficácia contra a Covid. Compartilhe com todos!"
+}
+
+
+### 3. Notícia real publicada na Folha → esperado: likely_true + link da Folha
+POST {{api}}/news
+Content-Type: application/json
+
+{
+  "title": "Quatro em cada dez brasileiros usaram remédios sem eficácia contra a Covid, diz estudo",
+  "text": "Levantamento mostra que 40% dos brasileiros usaram medicamentos sem eficácia comprovada contra a Covid durante a pandemia."
+}
+
+
+### 4. Texto sensacionalista, fonte desconhecida → esperado: likely_false (heurística)
+POST {{api}}/news
+Content-Type: application/json
+
+{
+  "title": "BOMBA!!!",
+  "text": "URGENTE!!! COMPARTILHE ANTES QUE APAGUEM! A mídia esconde a cura definitiva que eles não querem que você saiba. Alerta: vão proibir o remédio milagroso!",
+  "source": "blogqualquer.net"
+}
+
+
+### 5. Texto neutro com fonte reconhecida → esperado: likely_true
+POST {{api}}/news
+Content-Type: application/json
+
+{
+  "text": "O Ministério da Saúde divulgou nesta segunda-feira o boletim semanal com os dados de vacinação. Segundo o órgão, a cobertura vacinal aumentou em relação ao mês anterior.",
+  "url": "https://g1.globo.com/saude/noticia/2026/10/05/boletim-vacinacao.ghtml",
+  "source": "G1",
+  "published_at": "2026-10-05"
+}
+
+
+### 6. Texto neutro sem correspondência e sem fonte → esperado: inconclusive
+POST {{api}}/news
+Content-Type: application/json
+
+{
+  "text": "A prefeitura de uma pequena cidade do interior inaugurou hoje uma nova praça com bancos de madeira e iluminação."
+}
+
+
+### 7. Texto curto (RN07) → esperado: inconclusive, confidence null
+POST {{api}}/news
+Content-Type: application/json
+
+{
+  "text": "Isso é falso"
+}
+
+
+### ---------- Validações (todas devem retornar 422) ----------
+
+### 8. Texto vazio (RN02)
+POST {{api}}/news
+Content-Type: application/json
+
+{
+  "text": "    "
+}
+
+### 9. URL inválida
+POST {{api}}/news
+Content-Type: application/json
+
+{
+  "text": "Texto qualquer com palavras suficientes para análise",
+  "url": "isso-nao-e-url"
+}
+
+### 10. Data de publicação no futuro
+POST {{api}}/news
+Content-Type: application/json
+
+{
+  "text": "Texto qualquer com palavras suficientes para análise",
+  "published_at": "2999-01-01"
+}
+
+### 11. Cliente tentando definir a classificação (campo proibido)
+POST {{api}}/news
+Content-Type: application/json
+
+{
+  "text": "Texto qualquer com palavras suficientes para análise",
+  "classification": "likely_true"
+}
+
+
+### ---------- Consultas ----------
+
+### 12. Listar (paginado)
+GET {{api}}/news?page=1&page_size=5
+
+### 13. Filtrar por classificação e ordenar por confiança
+GET {{api}}/news?classification=likely_false&order_by=-confidence
+
+### 14. Filtrar por período
+GET {{api}}/news?analyzed_from=2026-10-01T00:00:00Z&analyzed_to=2026-12-31T23:59:59Z
+
+### 15. Detalhar (troque o id)
+GET {{api}}/news/1
+
+### 16. Inexistente → 404
+GET {{api}}/news/999999
+
+### 17. Parâmetros inválidos → 422
+GET {{api}}/news?page_size=1000&order_by=text
+
+
+### ---------- Operações administrativas ----------
+
+### 18. Editar sem chave → 403
+PATCH {{api}}/news/1
+Content-Type: application/json
+
+{
+  "title": "Novo título"
+}
+
+### 19. Editar com chave → 200 e análise refeita (troque o id)
+PATCH {{api}}/news/1
+Content-Type: application/json
+X-API-Key: {{adminKey}}
+
+{
+  "text": "O Ministério da Saúde divulgou o boletim semanal com os dados de vacinação do país.",
+  "url": "https://g1.globo.com/saude/x.ghtml"
+}
+
+### 20. Remover com chave → 204 (troque o id)
+DELETE {{api}}/news/1
+X-API-Key: {{adminKey}}

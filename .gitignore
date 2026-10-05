@@ -1,0 +1,57 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Ambientes virtuais ---
+.venv/
+venv/
+env/
+
+# --- Variáveis de ambiente (segredos) ---
+.env
+.env.*
+!.env.example
+
+# --- Testes / cobertura / ferramentas ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+
+# --- Machine learning (modelos treinados e datasets) ---
+*.joblib
+*.pkl
+*.pickle
+/data/
+/datasets/
+
+# --- Logs e bancos locais ---
+*.log
+logs/
+*.sqlite
+*.sqlite3
+*.db
+
+# --- Claude Code (configuração local; skills do projeto são versionadas) ---
+.claude/settings.local.json
+
+# --- IDEs / editores ---
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- Sistema operacional ---
+.DS_Store
+Thumbs.db

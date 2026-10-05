@@ -1,0 +1,52 @@
+{
+  "stopwords": [
+    "a", "ao", "aos", "as", "com", "como", "da", "das", "de", "dela", "dele", "deles",
+    "do", "dos", "e", "ela", "elas", "ele", "eles", "em", "entre", "era", "essa", "esse",
+    "esta", "este", "eu", "foi", "for", "foram", "ha", "isso", "isto", "ja", "lhe",
+    "mais", "mas", "me", "mesmo", "meu", "minha", "muito", "na", "nao", "nas", "nem",
+    "no", "nos", "nossa", "nosso", "num", "numa", "o", "os", "ou", "para", "pela",
+    "pelas", "pelo", "pelos", "por", "qual", "quando", "que", "quem", "se", "sem", "ser",
+    "seu", "seus", "so", "sua", "suas", "tambem", "te", "tem", "ter", "um", "uma",
+    "umas", "uns", "voce"
+  ],
+  "sensational_terms": [
+    "urgente", "bomba", "chocante", "inacreditável", "absurdo", "escândalo",
+    "bombástico", "exclusivo", "revelado", "vazou", "vazado", "segredo", "milagre",
+    "milagroso", "milagrosa", "imperdível", "compartilhe", "compartilhem", "repasse",
+    "divulguem", "viralizou", "mídia não mostra", "a mídia esconde",
+    "ninguém está falando", "antes que apaguem", "antes que tirem do ar",
+    "eles não querem que você saiba", "100% comprovado", "cura definitiva",
+    "verdade oculta", "acorda brasil"
+  ],
+  "alarmist_terms": [
+    "alerta", "perigo", "cuidado", "atenção", "pânico", "catástrofe", "tragédia",
+    "fim do mundo", "vai acabar", "vão proibir", "vão confiscar", "golpe", "conspiração",
+    "ameaça", "mortal", "envenenado", "contaminado", "colapso"
+  ],
+  "trusted_sources": [
+    "g1.globo.com", "globo.com", "folha.uol.com.br", "uol.com.br", "estadao.com.br",
+    "oglobo.globo.com", "bbc.com", "cnnbrasil.com.br", "agenciabrasil.ebc.com.br",
+    "valor.globo.com", "exame.com", "gov.br", "who.int", "fiocruz.br", "reuters.com",
+    "apnews.com", "nexojornal.com.br", "aosfatos.org", "lupa.uol.com.br", "boatos.org",
+    "e-farsas.com"
+  ],
+  "weights": {
+    "baseline": 0.5,
+    "sensational_per_term": 0.08,
+    "sensational_max": 0.3,
+    "alarmist_per_term": 0.08,
+    "alarmist_max": 0.25,
+    "repeated_punctuation": 0.1,
+    "excess_exclamation": 0.07,
+    "excess_exclamation_min": 3,
+    "uppercase": 0.15,
+    "uppercase_ratio_min": 0.3,
+    "trusted_source": -0.25,
+    "no_text_signals": -0.05,
+    "min_probability": 0.02,
+    "max_probability": 0.98,
+    "fact_check_false_min_probability": 0.9,
+    "fact_check_true_max_probability": 0.15,
+    "news_outlet_match": -0.2
+  }
+}

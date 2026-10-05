@@ -1,0 +1,41 @@
+{
+  "sources": [
+    {
+      "key": "lupa",
+      "name": "Agência Lupa",
+      "type": "fact_checker",
+      "client": "wordpress",
+      "search_url": "https://www.agencialupa.org/wp-json/wp/v2/posts",
+      "allowed_domains": ["agencialupa.org", "lupa.uol.com.br"],
+      "default_verdict": null
+    },
+    {
+      "key": "boatos",
+      "name": "Boatos.org",
+      "type": "fact_checker",
+      "client": "wordpress",
+      "search_url": "https://www.boatos.org/wp-json/wp/v2/posts",
+      "allowed_domains": ["boatos.org"],
+      "default_verdict": "false"
+    },
+    {
+      "key": "folha",
+      "name": "Folha de S.Paulo",
+      "type": "news_outlet",
+      "client": "folha",
+      "search_url": "https://search.folha.uol.com.br/search",
+      "allowed_domains": ["folha.uol.com.br"],
+      "default_verdict": null
+    }
+  ],
+  "verdict_patterns": {
+    "false": [
+      "é falso", "falso:", "#falso", "não é verdade", "é enganoso", "enganoso:", "#enganoso",
+      "boato", "é montagem", "é mentira", "é golpe", "é fake", "não há evidências",
+      "não há provas", "sem evidências", "não é real", "é falsa", "é falsa a"
+    ],
+    "true": [
+      "é verdade que", "é verdadeiro", "verdadeiro:", "#verdadeiro", "é verdadeira"
+    ]
+  }
+}

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playground da API</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --border: #dfe3e8; --text: #1c2430; --muted: #5d6b7a;
+    --accent: #2f5bea; --false: #c62f2f; --false-bg: #fdecec; --true: #1d7a46; --true-bg: #e7f6ee;
+    --unknown: #8a6100; --unknown-bg: #fdf4dc; --error: #c62f2f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12161c; --surface: #1b2129; --border: #2c3540; --text: #e6eaef; --muted: #98a4b3;
+      --accent: #7b9cff; --false: #ff7b7b; --false-bg: #3a1d1f; --true: #5fd197; --true-bg: #16321f;
+      --unknown: #f0c25e; --unknown-bg: #3a2f14; --error: #ff7b7b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-top: 16px; }
+  .tabs { display: flex; gap: 8px; margin-top: 16px; }
+  .tabs button { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .tabs button[aria-selected="true"] { color: var(--text); background: var(--surface); }
+  label { display: block; font-weight: 600; margin: 14px 0 4px; }
+  label small { font-weight: 400; color: var(--muted); }
+  input, textarea, select { width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 7px;
+    background: var(--bg); color: var(--text); font: inherit; }
+  textarea { min-height: 140px; resize: vertical; }
+  .field-error { color: var(--error); font-size: 13px; margin-top: 4px; }
+  .invalid { border-color: var(--error); }
+  button { padding: 9px 16px; border-radius: 7px; border: 0; background: var(--accent); color: #fff; font: inherit;
+    font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: wait; }
+  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--border); font-weight: 500; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+  .actions { margin-top: 18px; }
+  .badge { display: inline-block; padding: 6px 12px; border-radius: 999px; font-weight: 700; }
+  .likely_false { color: var(--false); background: var(--false-bg); }
+  .likely_true { color: var(--true); background: var(--true-bg); }
+  .inconclusive { color: var(--unknown); background: var(--unknown-bg); }
+  .meter { height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; margin-top: 8px; max-width: 320px; }
+  .meter > div { height: 100%; background: currentColor; }
+  ul { padding-left: 20px; margin: 6px 0; }
+  .match { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+  .match a { color: var(--accent); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+  .alert { padding: 12px 14px; border-radius: 8px; background: var(--false-bg); color: var(--false); margin-top: 16px; }
+  .disclaimer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 16px; padding-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover { background: var(--bg); }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; background: var(--bg); padding: 10px; border-radius: 7px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Verificador de notícias</h1>
+  <div class="muted">Página de teste que simula o front-end React. Ela só chama a API: toda a validação e a análise acontecem no back-end.</div>
+
+  <div class="card">
+    <div class="row">
+      <label for="api-url" style="margin:0">API</label>
+      <input id="api-url" style="flex:1; min-width:220px">
+      <button class="secondary" id="health-btn" type="button">Testar conexão</button>
+    </div>
+    <div id="health-status" class="muted" style="margin-top:6px"></div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="analyze">Analisar notícia</button>
+    <button role="tab" aria-selected="false" data-tab="history">Histórico</button>
+  </div>
+
+  <section id="tab-analyze">
+    <form id="news-form" class="card" novalidate>
+      <h2>Notícia</h2>
+      <div class="row muted">Exemplos:
+        <button type="button" class="secondary" data-example="fake">Alegação falsa</button>
+        <button type="button" class="secondary" data-example="folha">Notícia da Folha</button>
+        <button type="button" class="secondary" data-example="sensational">Sensacionalista</button>
+        <button type="button" class="secondary" id="clear-btn">Limpar</button>
+      </div>
+
+      <label for="text">Texto da notícia <small>(obrigatório)</small></label>
+      <textarea id="text" name="text" placeholder="Cole aqui o conteúdo que será analisado"></textarea>
+      <div class="field-error" data-error-for="text"></div>
+
+      <label for="title">Título <small>(quando disponível)</small></label>
+      <input id="title" name="title">
+      <div class="field-error" data-error-for="title"></div>
+
+      <div class="grid">
+        <div>
+          <label for="url">URL <small>(opcional)</small></label>
+          <input id="url" name="url" placeholder="https://...">
+          <div class="field-error" data-error-for="url"></div>
+        </div>
+        <div>
+          <label for="source">Fonte <small>(site ou veículo)</small></label>
+          <input id="source" name="source" placeholder="ex.: g1.globo.com">
+          <div class="field-error" data-error-for="source"></div>
+        </div>
+      </div>
+
+      <div class="row actions">
+        <button type="submit" id="submit-btn">Analisar</button>
+        <span id="loading" class="muted" hidden>Analisando e consultando Lupa, Boatos.org e Folha…</span>
+      </div>
+      <div id="form-alert" class="alert" hidden></div>
+    </form>
+
+    <div id="result" class="card" hidden></div>
+  </section>
+
+  <section id="tab-history" hidden>
+    <div class="card">
+      <div class="row">
+        <select id="filter-classification" style="max-width:240px">
+          <option value="">Todas as classificações</option>
+          <option value="likely_false">Possivelmente falsa</option>
+          <option value="likely_true">Possivelmente verdadeira</option>
+          <option value="inconclusive">Inconclusiva</option>
+        </select>
+        <select id="filter-order" style="max-width:240px">
+          <option value="-analyzed_at">Mais recentes</option>
+          <option value="analyzed_at">Mais antigas</option>
+          <option value="-confidence">Maior confiança</option>
+        </select>
+        <button type="button" id="reload-history">Atualizar</button>
+      </div>
+      <div id="history-alert" class="alert" hidden></div>
+      <table style="margin-top:12px">
+        <thead><tr><th>#</th><th>Título / fonte</th><th>Classificação</th><th>Confiança</th><th>Data</th></tr></thead>
+        <tbody id="history-body"></tbody>
+      </table>
+      <div class="row" style="margin-top:12px; justify-content:space-between">
+        <button type="button" class="secondary" id="prev-page">‹ Anterior</button>
+        <span id="page-info" class="muted"></span>
+        <button type="button" class="secondary" id="next-page">Próxima ›</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+// Sem frameworks: tudo que vem da API é inserido com textContent (nunca innerHTML),
+// porque títulos e trechos vêm de sites externos.
+const DEFAULT_API_URL = "http://localhost:8000/api/v1";
+const STORAGE_KEY = "playground_api_url";
+const PAGE_SIZE = 10;
+
+const EXAMPLES = {
+  fake: {
+    title: "Ivermectina tem 70% de eficácia contra a Covid",
+    text: "Um estudo mostra que a ivermectina tem 70% de eficácia contra a Covid. Compartilhe com todos!",
+    url: "", source: "",
+  },
+  folha: {
+    title: "Quatro em cada dez brasileiros usaram remédios sem eficácia contra a Covid, diz estudo",
+    text: "Levantamento mostra que 40% dos brasileiros usaram medicamentos sem eficácia comprovada contra a Covid durante a pandemia.",
+    url: "", source: "Folha de S.Paulo",
+  },
+  sensational: {
+    title: "BOMBA!!!",
+    text: "URGENTE!!! COMPARTILHE ANTES QUE APAGUEM! A mídia esconde a cura definitiva que eles não querem que você saiba. Alerta: vão proibir o remédio milagroso!",
+    url: "", source: "blogqualquer.net",
+  },
+};
+
+const $ = (selector) => document.querySelector(selector);
+const apiInput = $("#api-url");
+let historyPage = 1;
+
+function readStoredApiUrl() {
+  try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_API_URL; } catch { return DEFAULT_API_URL; }
+}
+function storeApiUrl(value) {
+  try { localStorage.setItem(STORAGE_KEY, value); } catch { /* armazenamento indisponível */ }
+}
+apiInput.value = readStoredApiUrl();
+apiInput.addEventListener("change", () => storeApiUrl(apiInput.value.trim()));
+
+const apiUrl = () => apiInput.value.trim().replace(/\/+$/, "");
+const baseUrl = () => apiUrl().replace(/\/api\/v\d+$/, "");
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key === "class") node.className = value;
+    else node.setAttribute(key, value);
+  }
+  for (const child of children) {
+    if (child == null) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
+function safeLink(url, label) {
+  // Só aceita links http(s); qualquer outro esquema vira texto
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return el("a", { href: parsed.href, target: "_blank", rel: "noopener noreferrer" }, label);
+    }
+  } catch { /* URL inválida */ }
+  return el("span", {}, label);
+}
+
+async function callApi(path, options = {}) {
+  const response = await fetch(apiUrl() + path, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+  });
+  let body = null;
+  try { body = await response.json(); } catch { /* resposta sem corpo */ }
+  return { status: response.status, body };
+}
+
+function networkErrorMessage() {
+  return `Não foi possível conectar em ${apiUrl()}. Verifique se a API está rodando e se ` +
+    `"${location.origin}" está em CORS_ORIGINS no .env do back-end.`;
+}
+
+// ---------- Conexão ----------
+$("#health-btn").addEventListener("click", async () => {
+  const status = $("#health-status");
+  status.textContent = "Testando…";
+  try {
+    const response = await fetch(baseUrl() + "/health");
+    const body = await response.json();
+    status.textContent = response.ok
+      ? `✅ API no ar (banco: ${body.database})`
+      : `⚠️ API respondeu ${response.status}: banco ${body.database || "indisponível"}`;
+  } catch {
+    status.textContent = "❌ " + networkErrorMessage();
+  }
+});
+
+// ---------- Abas ----------
+document.querySelectorAll("[data-tab]").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b === button)));
+    $("#tab-analyze").hidden = button.dataset.tab !== "analyze";
+    $("#tab-history").hidden = button.dataset.tab !== "history";
+    if (button.dataset.tab === "history") loadHistory();
+  });
+});
+
+// ---------- Formulário ----------
+const form = $("#news-form");
+const FIELDS = ["text", "title", "url", "source"];
+
+document.querySelectorAll("[data-example]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const example = EXAMPLES[button.dataset.example];
+    FIELDS.forEach((field) => { form.elements[field].value = example[field]; });
+    clearErrors();
+  });
+});
+$("#clear-btn").addEventListener("click", () => { form.reset(); clearErrors(); $("#result").hidden = true; });
+
+function clearErrors() {
+  document.querySelectorAll("[data-error-for]").forEach((node) => { node.textContent = ""; });
+  FIELDS.forEach((field) => form.elements[field].classList.remove("invalid"));
+  $("#form-alert").hidden = true;
+}
+
+function showFormAlert(message) {
+  const alert = $("#form-alert");
+  alert.textContent = message;
+  alert.hidden = false;
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearErrors();
+
+  // Envia só os campos preenchidos; a validação de verdade é do back-end
+  const payload = {};
+  FIELDS.forEach((field) => {
+    const value = form.elements[field].value.trim();
+    if (value || field === "text") payload[field] = value;
+  });
+
+  setLoading(true);
+  try {
+    const { status, body } = await callApi("/news", { method: "POST", body: JSON.stringify(payload) });
+    if (status === 201) {
+      renderResult(body);
+    } else if (status === 422) {
+      showValidationErrors(body);
+    } else if (status === 429) {
+      showFormAlert("Muitas análises em pouco tempo. Aguarde um minuto e tente novamente.");
+    } else {
+      showFormAlert((body && body.detail) || `Erro inesperado (HTTP ${status}).`);
+    }
+  } catch {
+    showFormAlert(networkErrorMessage());
+  } finally {
+    setLoading(false);
+  }
+});
+
+function setLoading(loading) {
+  $("#submit-btn").disabled = loading;
+  $("#loading").hidden = !loading;
+}
+
+function showValidationErrors(body) {
+  const general = [];
+  for (const error of (body && body.errors) || []) {
+    const target = document.querySelector(`[data-error-for="${CSS.escape(error.field)}"]`);
+    if (target) {
+      target.textContent = error.message;
+      form.elements[error.field].classList.add("invalid");
+    } else {
+      general.push(error.field ? `${error.field}: ${error.message}` : error.message);
+    }
+  }
+  showFormAlert([(body && body.detail) || "Dados inválidos.", ...general].join(" "));
+}
+
+// ---------- Resultado ----------
+function formatPercent(value) {
+  return value == null ? "n/d" : `${Math.round(value * 100)}%`;
+}
+
+const VERDICT_LABELS = { false: "aponta como FALSO", true: "aponta como VERDADEIRO" };
+
+function renderResult(news) {
+  const result = $("#result");
+  result.replaceChildren();
+
+  const meter = el("div", { class: "meter" }, el("div", { style: `width:${(news.confidence || 0) * 100}%` }));
+  result.append(
+    el("div", { class: "row", style: "justify-content:space-between" },
+      el("h2", { style: "margin:0" }, `Resultado #${news.id}`),
+      el("span", { class: "muted" }, new Date(news.analyzed_at).toLocaleString("pt-BR"))),
+    el("div", { style: "margin-top:12px" },
+      el("span", { class: `badge ${news.classification}` }, news.classification_label)),
+    el("div", { class: news.classification, style: "background:none; margin-top:10px" },
+      el("span", { class: "muted" }, `Confiança: ${formatPercent(news.confidence)}`), meter),
+  );
+
+  if (news.evidence && news.evidence.length) {
+    result.append(el("h2", { style: "margin-top:20px" }, "Por que esse resultado"),
+      el("ul", {}, ...news.evidence.map((item) => el("li", {}, item))));
+  }
+
+  const verification = news.verification;
+  if (verification) {
+    result.append(el("h2", { style: "margin-top:20px" }, "Verificação em sites confiáveis"));
+    result.append(el("div", { class: "muted" },
+      `Consultados: ${verification.sources_checked.join(", ") || "nenhum"}` +
+      (verification.sources_failed.length ? ` · Indisponíveis: ${verification.sources_failed.join(", ")}` : "") +
+      ` · Palavras-chave: ${verification.keywords.join(", ")}`));
+
+    if (!verification.matches.length) {
+      result.append(el("p", { class: "muted" }, "Nenhuma publicação correspondente encontrada."));
+    }
+    for (const match of verification.matches) {
+      const verdict = match.verdict ? ` — ${VERDICT_LABELS[match.verdict]}` : "";
+      result.append(el("div", { class: "match" },
+        el("div", { class: "muted" },
+          `${match.source_name}${verdict} · similaridade ${formatPercent(match.similarity)}` +
+          (match.published_at ? ` · ${new Date(match.published_at + "T00:00:00").toLocaleDateString("pt-BR")}` : "")),
+        safeLink(match.url, match.title),
+        match.excerpt ? el("div", { class: "muted", style: "margin-top:4px" }, match.excerpt) : null));
+    }
+  } else {
+    result.append(el("p", { class: "muted", style: "margin-top:20px" },
+      "Verificação em sites não executada (desativada ou texto curto demais)."));
+  }
+
+  const json = el("pre");
+  json.textContent = JSON.stringify(news, null, 2);
+  result.append(
+    el("details", { style: "margin-top:16px" }, el("summary", {}, "Ver JSON completo da resposta"), json),
+    el("div", { class: "disclaimer" }, news.disclaimer),
+  );
+  result.hidden = false;
+  result.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ---------- Histórico ----------
+$("#reload-history").addEventListener("click", () => { historyPage = 1; loadHistory(); });
+$("#filter-classification").addEventListener("change", () => { historyPage = 1; loadHistory(); });
+$("#filter-order").addEventListener("change", () => { historyPage = 1; loadHistory(); });
+$("#prev-page").addEventListener("click", () => { historyPage -= 1; loadHistory(); });
+$("#next-page").addEventListener("click", () => { historyPage += 1; loadHistory(); });
+
+async function loadHistory() {
+  const params = new URLSearchParams({ page: historyPage, page_size: PAGE_SIZE, order_by: $("#filter-order").value });
+  const classification = $("#filter-classification").value;
+  if (classification) params.set("classification", classification);
+
+  const alert = $("#history-alert");
+  alert.hidden = true;
+  try {
+    const { status, body } = await callApi(`/news?${params}`);
+    if (status !== 200) throw new Error((body && body.detail) || `HTTP ${status}`);
+    renderHistory(body);
+  } catch (error) {
+    alert.textContent = error instanceof TypeError ? networkErrorMessage() : error.message;
+    alert.hidden = false;
+  }
+}
+
+function renderHistory(page) {
+  const rows = page.items.map((item) => {
+    const row = el("tr", { class: "clickable", title: "Abrir análise" },
+      el("td", {}, item.id),
+      el("td", {}, item.title || el("span", { class: "muted" }, "(sem título)"),
+        el("div", { class: "muted" }, item.source || "")),
+      el("td", {}, el("span", { class: `badge ${item.classification}`, style: "font-size:12px; padding:3px 8px" },
+        item.classification_label)),
+      el("td", {}, formatPercent(item.confidence)),
+      el("td", {}, new Date(item.analyzed_at).toLocaleString("pt-BR")));
+    row.addEventListener("click", () => openNews(item.id));
+    return row;
+  });
+  $("#history-body").replaceChildren(...rows);
+  if (!rows.length) {
+    $("#history-body").append(el("tr", {}, el("td", { colspan: "5", class: "muted" }, "Nenhuma notícia encontrada.")));
+  }
+  $("#page-info").textContent = `Página ${page.page} de ${Math.max(page.pages, 1)} · ${page.total} notícia(s)`;
+  $("#prev-page").disabled = page.page <= 1;
+  $("#next-page").disabled = page.page >= page.pages;
+}
+
+async function openNews(id) {
+  try {
+    const { status, body } = await callApi(`/news/${encodeURIComponent(id)}`);
+    if (status !== 200) throw new Error((body && body.detail) || `HTTP ${status}`);
+    document.querySelector('[data-tab="analyze"]').click();
+    renderResult(body);
+  } catch (error) {
+    const alert = $("#history-alert");
+    alert.textContent = error instanceof TypeError ? networkErrorMessage() : error.message;
+    alert.hidden = false;
+  }
+}
+</script>
+</body>
+</html>
