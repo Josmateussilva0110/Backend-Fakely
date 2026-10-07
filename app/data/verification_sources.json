@@ -9,19 +9,19 @@
       "default_verdict": null
     },
     {
-      "key": "boatos",
-      "name": "Boatos.org",
-      "client": "wordpress",
-      "search_url": "https://www.boatos.org/wp-json/wp/v2/posts",
-      "allowed_domains": ["boatos.org"],
-      "default_verdict": "false"
-    },
-    {
       "key": "folha",
       "name": "Folha de S.Paulo",
       "client": "folha",
       "search_url": "https://search.folha.uol.com.br/search",
       "allowed_domains": ["folha.uol.com.br"],
+      "default_verdict": null
+    },
+    {
+      "key": "cnn_brasil",
+      "name": "CNN Brasil",
+      "client": "wordpress",
+      "search_url": "https://www.cnnbrasil.com.br/wp-json/wp/v2/posts",
+      "allowed_domains": ["cnnbrasil.com.br"],
       "default_verdict": null
     },
     {

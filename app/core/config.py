@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     min_words: int = 5
     claim_max_length: int = 500
 
-    # Busca de evidências (Lupa, Boatos.org, Folha e, com chave, Google Fact Check)
+    # Busca de evidências (Lupa, Folha, CNN Brasil e, com chave, Google Fact Check)
     verification_enabled: bool = True
     verification_sources_path: Path = BASE_DIR / "app" / "data" / "verification_sources.json"
     verification_user_agent: str = "FakeNewsDetectionMVP/1.0 (projeto academico)"
