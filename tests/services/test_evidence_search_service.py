@@ -14,7 +14,7 @@ def build_service(settings, config, rules, clients: dict) -> EvidenceSearchServi
 
 def test_config_lists_search_providers(verification_config):
     keys = [s.key for s in verification_config.sources]
-    assert keys == ["lupa", "boatos", "folha", "google_fact_check"]
+    assert keys == ["lupa", "folha", "cnn_brasil", "google_fact_check"]
 
 
 def test_google_fact_check_is_only_enabled_with_api_key(settings, verification_config, rules):

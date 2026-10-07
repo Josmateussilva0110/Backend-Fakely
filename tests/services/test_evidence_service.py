@@ -25,11 +25,11 @@ def test_fact_check_false_contradicts(evidence_service, verification_config):
     assert evidence.accessed_at is not None
 
 
-def test_boatos_uses_default_verdict(evidence_service, verification_config):
-    evidences = build(evidence_service, verification_config, {"boatos": [
-        make_result("Ivermectina tem eficácia de 70% contra Covid", "https://www.boatos.org/saude/x.html"),
-    ]})
-    assert evidences[0].stance == "contradicts"
+def test_provider_default_verdict_applies_without_pattern(evidence_service, verification_config):
+    # Provedor que só publica desmentidos pode declarar um veredito padrão
+    provider = verification_config.sources[0].model_copy(update={"default_verdict": "false"})
+    result = make_result("Ivermectina tem eficácia de 70% contra Covid", "https://www.agencialupa.org/x")
+    assert evidence_service.detect_verdict(provider, result, "fact_checker") == "false"
 
 
 def test_news_outlet_report_supports_only_when_highly_relevant(evidence_service, verification_config, settings):

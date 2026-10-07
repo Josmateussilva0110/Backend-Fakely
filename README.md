@@ -119,7 +119,7 @@ Os erros seguem o formato `{"detail": "...", "errors": [{"field": "...", "messag
 | Fontes confiáveis sustentam a afirmação | `likely_true` |
 | Fontes divergem, nenhuma evidência, fontes fora do ar ou texto curto | `inconclusive` |
 
-- **Fontes consultadas:** Agência Lupa, Boatos.org e Folha de S.Paulo. A Google Fact Check Tools também entra se `GOOGLE_FACT_CHECK_API_KEY` estiver definida.
+- **Fontes consultadas:** Agência Lupa, Folha de S.Paulo e CNN Brasil. A Google Fact Check Tools também entra se `GOOGLE_FACT_CHECK_API_KEY` estiver definida.
 - **O que conta:** só evidências relevantes, de fontes cadastradas em `app/data/source_registry.json` e independentes entre si.
 - **O que não decide:** o estilo do texto só gera alertas. Estar em um site conhecido não torna a notícia verdadeira.
 
