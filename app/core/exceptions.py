@@ -65,6 +65,11 @@ class BusinessRuleError(AppError):
     status_code = 409
 
 
+class UnprocessableError(AppError):
+    # Entrada bem formada, mas que não pode ser processada (ex.: URL bloqueada ou ilegível)
+    status_code = 422
+
+
 def error_response(status_code: int, detail: str, errors: list[dict] | None = None) -> JSONResponse:
     return JSONResponse(status_code=status_code, content={"detail": detail, "errors": errors or []})
 

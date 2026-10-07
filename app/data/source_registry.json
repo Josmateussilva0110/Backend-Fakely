@@ -1,0 +1,35 @@
+{
+  "sources": [
+    {"key": "gov_br", "name": "Governo Federal (gov.br)", "category": "official", "areas": ["governo", "saude", "economia", "educacao"], "domains": ["gov.br"]},
+    {"key": "ibge", "name": "IBGE", "category": "official", "areas": ["estatistica", "economia", "populacao"], "domains": ["ibge.gov.br"]},
+    {"key": "bcb", "name": "Banco Central do Brasil", "category": "official", "areas": ["economia", "financas"], "domains": ["bcb.gov.br"]},
+    {"key": "saude_gov", "name": "Ministério da Saúde", "category": "official", "areas": ["saude"], "domains": ["saude.gov.br"]},
+    {"key": "tse", "name": "Tribunal Superior Eleitoral", "category": "official", "areas": ["eleicoes"], "domains": ["tse.jus.br"]},
+    {"key": "who", "name": "Organização Mundial da Saúde", "category": "official", "areas": ["saude"], "domains": ["who.int"]},
+    {"key": "fiocruz", "name": "Fiocruz", "category": "scientific", "areas": ["saude", "ciencia"], "domains": ["fiocruz.br"]},
+    {"key": "butantan", "name": "Instituto Butantan", "category": "scientific", "areas": ["saude", "ciencia"], "domains": ["butantan.gov.br"]},
+
+    {"key": "lupa", "name": "Agência Lupa", "category": "fact_checker", "areas": [], "domains": ["agencialupa.org", "lupa.uol.com.br"]},
+    {"key": "boatos", "name": "Boatos.org", "category": "fact_checker", "areas": [], "domains": ["boatos.org"]},
+    {"key": "aos_fatos", "name": "Aos Fatos", "category": "fact_checker", "areas": [], "domains": ["aosfatos.org"]},
+    {"key": "e_farsas", "name": "E-farsas", "category": "fact_checker", "areas": [], "domains": ["e-farsas.com"]},
+    {"key": "afp_checamos", "name": "AFP Checamos", "category": "fact_checker", "areas": [], "domains": ["checamos.afp.com"]},
+    {"key": "comprova", "name": "Projeto Comprova", "category": "fact_checker", "areas": [], "domains": ["projetocomprova.com.br"]},
+    {"key": "estadao_verifica", "name": "Estadão Verifica", "category": "fact_checker", "areas": [], "domains": ["estadao.com.br/estadao-verifica"]},
+    {"key": "uol_confere", "name": "UOL Confere", "category": "fact_checker", "areas": [], "domains": ["noticias.uol.com.br/confere"]},
+    {"key": "fato_ou_fake", "name": "Fato ou Fake (g1)", "category": "fact_checker", "areas": [], "domains": ["g1.globo.com/fato-ou-fake"]},
+
+    {"key": "folha", "name": "Folha de S.Paulo", "category": "news_outlet", "areas": [], "domains": ["folha.uol.com.br"]},
+    {"key": "g1", "name": "g1", "category": "news_outlet", "areas": [], "domains": ["g1.globo.com"]},
+    {"key": "oglobo", "name": "O Globo", "category": "news_outlet", "areas": [], "domains": ["oglobo.globo.com"]},
+    {"key": "valor", "name": "Valor Econômico", "category": "news_outlet", "areas": ["economia"], "domains": ["valor.globo.com"]},
+    {"key": "estadao", "name": "Estadão", "category": "news_outlet", "areas": [], "domains": ["estadao.com.br"]},
+    {"key": "uol", "name": "UOL", "category": "news_outlet", "areas": [], "domains": ["uol.com.br"]},
+    {"key": "agencia_brasil", "name": "Agência Brasil", "category": "news_outlet", "areas": [], "domains": ["agenciabrasil.ebc.com.br"]},
+    {"key": "cnn_brasil", "name": "CNN Brasil", "category": "news_outlet", "areas": [], "domains": ["cnnbrasil.com.br"]},
+    {"key": "bbc", "name": "BBC", "category": "news_outlet", "areas": [], "domains": ["bbc.com"]},
+    {"key": "nexo", "name": "Nexo Jornal", "category": "news_outlet", "areas": [], "domains": ["nexojornal.com.br"]},
+    {"key": "reuters", "name": "Reuters", "category": "news_outlet", "areas": [], "domains": ["reuters.com"]},
+    {"key": "ap", "name": "Associated Press", "category": "news_outlet", "areas": [], "domains": ["apnews.com"]}
+  ]
+}

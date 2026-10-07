@@ -1,0 +1,10 @@
+# Quebras de linha LF no repositório para toda a equipe (Linux e Windows).
+# Evita que o Git converta para CRLF e quebre o Dockerfile e o .env lido no contêiner.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.joblib binary
