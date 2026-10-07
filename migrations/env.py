@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.database.session import Base
-from app.models import news_model  # noqa: F401  (registra a entidade no metadata)
+from app.models import evidence_model, news_analysis_model, news_model  # noqa: F401  (registra as entidades)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)

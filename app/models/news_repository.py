@@ -3,13 +3,12 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.news_model import Classification, News
+from app.models.news_model import News
 
 # Lista branca de campos ordenáveis expostos na API
 ORDERABLE_COLUMNS = {
-    "analyzed_at": News.analyzed_at,
+    "created_at": News.created_at,
     "published_at": News.published_at,
-    "confidence": News.confidence,
 }
 
 
@@ -26,20 +25,17 @@ class NewsRepository:
         offset: int,
         limit: int,
         order_by: str,
-        classification: Classification | None = None,
         source: str | None = None,
-        analyzed_from: datetime | None = None,
-        analyzed_to: datetime | None = None,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
     ) -> tuple[list[News], int]:
         conditions = []
-        if classification is not None:
-            conditions.append(News.classification == classification)
         if source is not None:
             conditions.append(func.lower(News.source) == source.lower())
-        if analyzed_from is not None:
-            conditions.append(News.analyzed_at >= analyzed_from)
-        if analyzed_to is not None:
-            conditions.append(News.analyzed_at <= analyzed_to)
+        if created_from is not None:
+            conditions.append(News.created_at >= created_from)
+        if created_to is not None:
+            conditions.append(News.created_at <= created_to)
 
         total = self.db.scalar(select(func.count()).select_from(News).where(*conditions)) or 0
 

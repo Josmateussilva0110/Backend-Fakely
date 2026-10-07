@@ -1,4 +1,4 @@
-"""Carrega a configuração dos sites consultados na verificação."""
+"""Carrega a configuração dos provedores de busca usados na verificação."""
 
 import json
 from functools import lru_cache
@@ -9,8 +9,8 @@ from pydantic import BaseModel, ConfigDict, HttpUrl, field_validator
 
 from app.services.text_processing_service import normalize_text
 
-SourceType = Literal["fact_checker", "news_outlet"]
 Verdict = Literal["false", "true"]
+SearchClientType = Literal["wordpress", "folha", "google_fact_check"]
 
 
 class VerificationSourceConfig(BaseModel):
@@ -18,8 +18,7 @@ class VerificationSourceConfig(BaseModel):
 
     key: str
     name: str
-    type: SourceType
-    client: Literal["wordpress", "folha"]
+    client: SearchClientType
     search_url: HttpUrl
     allowed_domains: tuple[str, ...]
     default_verdict: Verdict | None = None
@@ -42,7 +41,10 @@ class VerificationConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     sources: tuple[VerificationSourceConfig, ...]
+    # Frases de veredito no título/resumo das checagens ("é falso que...")
     verdict_patterns: VerdictPatterns
+    # Classificações curtas das APIs de checagem ("Falso", "Enganoso")
+    rating_patterns: VerdictPatterns
 
 
 @lru_cache(maxsize=4)

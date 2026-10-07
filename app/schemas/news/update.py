@@ -1,12 +1,10 @@
-from pydantic import Field, model_validator
+from pydantic import model_validator
 
-from app.core.config import get_settings
 from app.schemas.news.form import NewsForm
 
 
 class NewsUpdate(NewsForm):
     # PATCH: campos opcionais, mas as validações do form continuam valendo
-    text: str | None = Field(None, max_length=get_settings().max_text_length)
 
     @model_validator(mode="after")
     def validate_changes(self) -> "NewsUpdate":

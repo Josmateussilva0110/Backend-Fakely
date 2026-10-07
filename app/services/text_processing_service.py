@@ -1,4 +1,4 @@
-"""Pré-processamento do texto (RN04) e extração de características."""
+"""Pré-processamento do texto (RN04) e extração de características de estilo."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from app.services.analysis_rules_service import AnalysisRules
@@ -34,8 +33,6 @@ class TextFeatures:
     repeated_punctuation_count: int
     sensational_terms: tuple[str, ...]
     alarmist_terms: tuple[str, ...]
-    domain: str | None
-    trusted_source: bool | None
 
 
 def remove_accents(text: str) -> str:
@@ -64,45 +61,18 @@ def preprocess_text(text: str, stopwords: frozenset[str]) -> ProcessedText:
     )
 
 
-def extract_domain(url: str | None, source: str | None) -> str | None:
-    for candidate in (url, source):
-        if not candidate:
-            continue
-        target = candidate if "://" in candidate else f"http://{candidate}"
-        try:
-            host = urlparse(target).hostname
-        except ValueError:
-            continue
-        if host and "." in host and " " not in host:
-            return host.removeprefix("www.")
-    return None
-
-
-def is_trusted_domain(domain: str | None, trusted_sources: frozenset[str]) -> bool | None:
-    if domain is None:
-        return None
-    return any(domain == d or domain.endswith("." + d) for d in trusted_sources)
-
-
 def find_terms(normalized_text: str, terms: frozenset[str]) -> tuple[str, ...]:
     return tuple(
         term for term in sorted(terms) if re.search(rf"\b{re.escape(term)}\b", normalized_text)
     )
 
 
-def extract_features(
-    processed: ProcessedText,
-    rules: AnalysisRules,
-    title: str | None = None,
-    url: str | None = None,
-    source: str | None = None,
-) -> TextFeatures:
+def extract_features(processed: ProcessedText, rules: AnalysisRules, title: str | None = None) -> TextFeatures:
     raw = f"{title}\n{processed.original}" if title else processed.original
     normalized = normalize_text(raw)
 
     letters = [char for char in raw if char.isalpha()]
     uppercase = sum(1 for char in letters if char.isupper())
-    domain = extract_domain(url, source)
 
     return TextFeatures(
         word_count=len(processed.tokens),
@@ -112,6 +82,21 @@ def extract_features(
         repeated_punctuation_count=len(_REPEATED_PUNCTUATION_PATTERN.findall(raw)),
         sensational_terms=find_terms(normalized, rules.sensational_terms),
         alarmist_terms=find_terms(normalized, rules.alarmist_terms),
-        domain=domain,
-        trusted_source=is_trusted_domain(domain, rules.trusted_sources),
     )
+
+
+def describe_style_signals(features: TextFeatures, rules: AnalysisRules) -> list[str]:
+    """Sinais de estilo comuns em desinformação; são alertas, não provas de falsidade."""
+    thresholds = rules.style_thresholds
+    signals = []
+    if features.sensational_terms:
+        signals.append(f"Termos sensacionalistas: {', '.join(features.sensational_terms)}")
+    if features.alarmist_terms:
+        signals.append(f"Afirmações alarmistas: {', '.join(features.alarmist_terms)}")
+    if features.repeated_punctuation_count:
+        signals.append("Uso de pontuação repetida (ex.: '!!!', '?!')")
+    elif features.exclamation_count >= thresholds.excess_exclamation_min:
+        signals.append("Excesso de pontos de exclamação")
+    if features.uppercase_ratio > thresholds.uppercase_ratio_min:
+        signals.append("Uso excessivo de letras maiúsculas")
+    return signals

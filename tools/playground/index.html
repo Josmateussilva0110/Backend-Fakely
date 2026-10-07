@@ -91,7 +91,7 @@
         <button type="button" class="secondary" id="clear-btn">Limpar</button>
       </div>
 
-      <label for="text">Texto da notícia <small>(obrigatório)</small></label>
+      <label for="text">Texto da notícia <small>(ou só a URL, para o back-end ler a página)</small></label>
       <textarea id="text" name="text" placeholder="Cole aqui o conteúdo que será analisado"></textarea>
       <div class="field-error" data-error-for="text"></div>
 
@@ -101,7 +101,7 @@
 
       <div class="grid">
         <div>
-          <label for="url">URL <small>(opcional)</small></label>
+          <label for="url">URL <small>(opcional se houver texto)</small></label>
           <input id="url" name="url" placeholder="https://...">
           <div class="field-error" data-error-for="url"></div>
         </div>
@@ -114,7 +114,7 @@
 
       <div class="row actions">
         <button type="submit" id="submit-btn">Analisar</button>
-        <span id="loading" class="muted" hidden>Analisando e consultando Lupa, Boatos.org e Folha…</span>
+        <span id="loading" class="muted" hidden>Identificando a afirmação e buscando evidências…</span>
       </div>
       <div id="form-alert" class="alert" hidden></div>
     </form>
@@ -134,13 +134,12 @@
         <select id="filter-order" style="max-width:240px">
           <option value="-analyzed_at">Mais recentes</option>
           <option value="analyzed_at">Mais antigas</option>
-          <option value="-confidence">Maior confiança</option>
         </select>
         <button type="button" id="reload-history">Atualizar</button>
       </div>
       <div id="history-alert" class="alert" hidden></div>
       <table style="margin-top:12px">
-        <thead><tr><th>#</th><th>Título / fonte</th><th>Classificação</th><th>Confiança</th><th>Data</th></tr></thead>
+        <thead><tr><th>#</th><th>Afirmação / título</th><th>Classificação</th><th>Verificação</th><th>Data</th></tr></thead>
         <tbody id="history-body"></tbody>
       </table>
       <div class="row" style="margin-top:12px; justify-content:space-between">
@@ -290,12 +289,12 @@ form.addEventListener("submit", async (event) => {
   const payload = {};
   FIELDS.forEach((field) => {
     const value = form.elements[field].value.trim();
-    if (value || field === "text") payload[field] = value;
+    if (value) payload[field] = value;
   });
 
   setLoading(true);
   try {
-    const { status, body } = await callApi("/news", { method: "POST", body: JSON.stringify(payload) });
+    const { status, body } = await callApi("/news-analyses", { method: "POST", body: JSON.stringify(payload) });
     if (status === 201) {
       renderResult(body);
     } else if (status === 422) {
@@ -332,62 +331,71 @@ function showValidationErrors(body) {
 }
 
 // ---------- Resultado ----------
-function formatPercent(value) {
-  return value == null ? "n/d" : `${Math.round(value * 100)}%`;
+const STANCE_LABELS = { supports: "sustenta a afirmação", contradicts: "contradiz a afirmação", neutral: "relacionada, sem posição" };
+const CATEGORY_LABELS = {
+  official: "fonte oficial", scientific: "instituição científica", fact_checker: "agência de checagem",
+  news_outlet: "veículo jornalístico", unknown: "fonte não cadastrada",
+};
+const STATUS_LABELS = {
+  complete: "todas as fontes consultadas", partial: "parte das fontes indisponível",
+  failed: "nenhuma fonte respondeu", skipped: "busca não executada",
+};
+
+function formatDate(value) {
+  return value ? new Date(value + "T00:00:00").toLocaleDateString("pt-BR") : null;
 }
 
-const VERDICT_LABELS = { false: "aponta como FALSO", true: "aponta como VERDADEIRO" };
+function list(title, items) {
+  if (!items || !items.length) return [];
+  return [el("h2", { style: "margin-top:20px" }, title), el("ul", {}, ...items.map((item) => el("li", {}, item)))];
+}
 
-function renderResult(news) {
+function renderResult(analysis) {
   const result = $("#result");
   result.replaceChildren();
 
-  const meter = el("div", { class: "meter" }, el("div", { style: `width:${(news.confidence || 0) * 100}%` }));
   result.append(
     el("div", { class: "row", style: "justify-content:space-between" },
-      el("h2", { style: "margin:0" }, `Resultado #${news.id}`),
-      el("span", { class: "muted" }, new Date(news.analyzed_at).toLocaleString("pt-BR"))),
+      el("h2", { style: "margin:0" }, `Análise #${analysis.id}`),
+      el("span", { class: "muted" }, new Date(analysis.analyzed_at).toLocaleString("pt-BR"))),
     el("div", { style: "margin-top:12px" },
-      el("span", { class: `badge ${news.classification}` }, news.classification_label)),
-    el("div", { class: news.classification, style: "background:none; margin-top:10px" },
-      el("span", { class: "muted" }, `Confiança: ${formatPercent(news.confidence)}`), meter),
+      el("span", { class: `badge ${analysis.classification}` }, analysis.classification_label)),
+    el("p", {}, el("strong", {}, "Afirmação analisada: "), analysis.claim || "(não identificada)"),
+    el("p", {}, el("strong", {}, "Justificativa: "), analysis.justification),
+    el("div", { class: "muted" },
+      `Verificação: ${STATUS_LABELS[analysis.verification_status]}` +
+      ` · Consultados: ${analysis.sources_checked.join(", ") || "nenhum"}` +
+      (analysis.sources_failed.length ? ` · Indisponíveis: ${analysis.sources_failed.join(", ")}` : "") +
+      (analysis.keywords.length ? ` · Palavras-chave: ${analysis.keywords.join(", ")}` : "")),
   );
 
-  if (news.evidence && news.evidence.length) {
-    result.append(el("h2", { style: "margin-top:20px" }, "Por que esse resultado"),
-      el("ul", {}, ...news.evidence.map((item) => el("li", {}, item))));
+  result.append(el("h2", { style: "margin-top:20px" }, "Evidências consultadas"));
+  if (!analysis.evidences.length) {
+    result.append(el("p", { class: "muted" }, "Nenhuma publicação correspondente encontrada."));
+  }
+  for (const evidence of analysis.evidences) {
+    const details = [
+      evidence.source_name,
+      CATEGORY_LABELS[evidence.category],
+      STANCE_LABELS[evidence.stance],
+      evidence.rating ? `classificação: "${evidence.rating}"` : null,
+      formatDate(evidence.published_at),
+      evidence.independent ? null : "não conta como fonte independente",
+    ].filter(Boolean);
+    result.append(el("div", { class: "match" },
+      el("div", { class: "muted" }, details.join(" · ")),
+      safeLink(evidence.url, evidence.title),
+      evidence.excerpt ? el("div", { class: "muted", style: "margin-top:4px" }, evidence.excerpt) : null));
   }
 
-  const verification = news.verification;
-  if (verification) {
-    result.append(el("h2", { style: "margin-top:20px" }, "Verificação em sites confiáveis"));
-    result.append(el("div", { class: "muted" },
-      `Consultados: ${verification.sources_checked.join(", ") || "nenhum"}` +
-      (verification.sources_failed.length ? ` · Indisponíveis: ${verification.sources_failed.join(", ")}` : "") +
-      ` · Palavras-chave: ${verification.keywords.join(", ")}`));
-
-    if (!verification.matches.length) {
-      result.append(el("p", { class: "muted" }, "Nenhuma publicação correspondente encontrada."));
-    }
-    for (const match of verification.matches) {
-      const verdict = match.verdict ? ` — ${VERDICT_LABELS[match.verdict]}` : "";
-      result.append(el("div", { class: "match" },
-        el("div", { class: "muted" },
-          `${match.source_name}${verdict} · similaridade ${formatPercent(match.similarity)}` +
-          (match.published_at ? ` · ${new Date(match.published_at + "T00:00:00").toLocaleDateString("pt-BR")}` : "")),
-        safeLink(match.url, match.title),
-        match.excerpt ? el("div", { class: "muted", style: "margin-top:4px" }, match.excerpt) : null));
-    }
-  } else {
-    result.append(el("p", { class: "muted", style: "margin-top:20px" },
-      "Verificação em sites não executada (desativada ou texto curto demais)."));
-  }
+  result.append(...list("Limitações", analysis.limitations));
+  result.append(...list("Sinais de estilo (alertas, não decidem o resultado)", analysis.style_indicators));
 
   const json = el("pre");
-  json.textContent = JSON.stringify(news, null, 2);
+  json.textContent = JSON.stringify(analysis, null, 2);
   result.append(
     el("details", { style: "margin-top:16px" }, el("summary", {}, "Ver JSON completo da resposta"), json),
-    el("div", { class: "disclaimer" }, news.disclaimer),
+    el("div", { class: "disclaimer" }, analysis.disclaimer),
   );
   result.hidden = false;
   result.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -408,7 +416,7 @@ async function loadHistory() {
   const alert = $("#history-alert");
   alert.hidden = true;
   try {
-    const { status, body } = await callApi(`/news?${params}`);
+    const { status, body } = await callApi(`/news-analyses?${params}`);
     if (status !== 200) throw new Error((body && body.detail) || `HTTP ${status}`);
     renderHistory(body);
   } catch (error) {
@@ -421,27 +429,27 @@ function renderHistory(page) {
   const rows = page.items.map((item) => {
     const row = el("tr", { class: "clickable", title: "Abrir análise" },
       el("td", {}, item.id),
-      el("td", {}, item.title || el("span", { class: "muted" }, "(sem título)"),
-        el("div", { class: "muted" }, item.source || "")),
+      el("td", {}, item.claim || item.news.title || el("span", { class: "muted" }, "(sem afirmação)"),
+        el("div", { class: "muted" }, item.news.source || "")),
       el("td", {}, el("span", { class: `badge ${item.classification}`, style: "font-size:12px; padding:3px 8px" },
         item.classification_label)),
-      el("td", {}, formatPercent(item.confidence)),
+      el("td", {}, STATUS_LABELS[item.verification_status]),
       el("td", {}, new Date(item.analyzed_at).toLocaleString("pt-BR")));
-    row.addEventListener("click", () => openNews(item.id));
+    row.addEventListener("click", () => openAnalysis(item.id));
     return row;
   });
   $("#history-body").replaceChildren(...rows);
   if (!rows.length) {
-    $("#history-body").append(el("tr", {}, el("td", { colspan: "5", class: "muted" }, "Nenhuma notícia encontrada.")));
+    $("#history-body").append(el("tr", {}, el("td", { colspan: "5", class: "muted" }, "Nenhuma análise encontrada.")));
   }
-  $("#page-info").textContent = `Página ${page.page} de ${Math.max(page.pages, 1)} · ${page.total} notícia(s)`;
+  $("#page-info").textContent = `Página ${page.page} de ${Math.max(page.pages, 1)} · ${page.total} análise(s)`;
   $("#prev-page").disabled = page.page <= 1;
   $("#next-page").disabled = page.page >= page.pages;
 }
 
-async function openNews(id) {
+async function openAnalysis(id) {
   try {
-    const { status, body } = await callApi(`/news/${encodeURIComponent(id)}`);
+    const { status, body } = await callApi(`/news-analyses/${encodeURIComponent(id)}`);
     if (status !== 200) throw new Error((body && body.detail) || `HTTP ${status}`);
     document.querySelector('[data-tab="analyze"]').click();
     renderResult(body);

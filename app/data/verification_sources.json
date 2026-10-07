@@ -3,7 +3,6 @@
     {
       "key": "lupa",
       "name": "Agência Lupa",
-      "type": "fact_checker",
       "client": "wordpress",
       "search_url": "https://www.agencialupa.org/wp-json/wp/v2/posts",
       "allowed_domains": ["agencialupa.org", "lupa.uol.com.br"],
@@ -12,7 +11,6 @@
     {
       "key": "boatos",
       "name": "Boatos.org",
-      "type": "fact_checker",
       "client": "wordpress",
       "search_url": "https://www.boatos.org/wp-json/wp/v2/posts",
       "allowed_domains": ["boatos.org"],
@@ -21,10 +19,17 @@
     {
       "key": "folha",
       "name": "Folha de S.Paulo",
-      "type": "news_outlet",
       "client": "folha",
       "search_url": "https://search.folha.uol.com.br/search",
       "allowed_domains": ["folha.uol.com.br"],
+      "default_verdict": null
+    },
+    {
+      "key": "google_fact_check",
+      "name": "Google Fact Check Tools",
+      "client": "google_fact_check",
+      "search_url": "https://factchecktools.googleapis.com/v1alpha1/claims:search",
+      "allowed_domains": ["factchecktools.googleapis.com"],
       "default_verdict": null
     }
   ],
@@ -37,5 +42,12 @@
     "true": [
       "é verdade que", "é verdadeiro", "verdadeiro:", "#verdadeiro", "é verdadeira"
     ]
+  },
+  "rating_patterns": {
+    "false": [
+      "falso", "falsa", "enganoso", "enganosa", "fake", "montagem", "boato", "mentira",
+      "não é verdade", "não é verdadeiro", "sem evidências", "false", "misleading", "pants on fire"
+    ],
+    "true": ["verdadeiro", "verdadeira", "verdade", "correto", "true", "correct"]
   }
 }

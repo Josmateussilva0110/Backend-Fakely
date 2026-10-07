@@ -19,6 +19,9 @@ class SearchResult:
     url: str
     excerpt: str
     published_at: date | None
+    # Preenchidos por APIs de checagem: classificação textual e quem publicou a checagem
+    rating: str | None = None
+    publisher_name: str | None = None
 
 
 class SearchClient(Protocol):
@@ -45,9 +48,11 @@ class HttpFetcher:
         self.client = client
         self.max_response_bytes = max_response_bytes
 
-    def get_text(self, url: str, params: dict, allowed_domains: tuple[str, ...]) -> str:
+    def get_text(
+        self, url: str, params: dict, allowed_domains: tuple[str, ...], headers: dict | None = None
+    ) -> str:
         try:
-            with self.client.stream("GET", url, params=params) as response:
+            with self.client.stream("GET", url, params=params, headers=headers) as response:
                 if response.status_code != 200:
                     raise SearchError(f"HTTP {response.status_code} em {url}")
                 # Redirecionamento para outro domínio é rejeitado
