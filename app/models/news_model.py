@@ -1,24 +1,24 @@
-from datetime import date, datetime, timezone
-from enum import Enum
+from __future__ import annotations
 
-from sqlalchemy import JSON, Date, DateTime, Float, Integer, String, Text
-from sqlalchemy import Enum as SAEnum
-from sqlalchemy.orm import Mapped, mapped_column
+from datetime import date, datetime, timezone
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Date, DateTime, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.session import Base
+
+if TYPE_CHECKING:
+    from app.models.news_analysis_model import NewsAnalysis
 
 TITLE_MAX_LENGTH = 500
 URL_MAX_LENGTH = 2048
 SOURCE_MAX_LENGTH = 255
 
 
-class Classification(str, Enum):
-    LIKELY_TRUE = "likely_true"
-    LIKELY_FALSE = "likely_false"
-    INCONCLUSIVE = "inconclusive"
-
-
 class News(Base):
+    """Conteúdo enviado pelo usuário; cada verificação gera uma análise separada."""
+
     __tablename__ = "news"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -27,17 +27,10 @@ class News(Base):
     url: Mapped[str | None] = mapped_column(String(URL_MAX_LENGTH))
     source: Mapped[str | None] = mapped_column(String(SOURCE_MAX_LENGTH), index=True)
     published_at: Mapped[date | None] = mapped_column(Date, index=True)
-    analyzed_at: Mapped[datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True
     )
-    classification: Mapped[Classification] = mapped_column(
-        SAEnum(Classification, native_enum=False, length=20, values_callable=lambda e: [m.value for m in e]),
-        nullable=False,
-        index=True,
+
+    analyses: Mapped[list[NewsAnalysis]] = relationship(
+        back_populates="news", cascade="all, delete-orphan", passive_deletes=True
     )
-    confidence: Mapped[float | None] = mapped_column(Float, index=True)
-    probability_fake: Mapped[float | None] = mapped_column(Float)
-    method: Mapped[str] = mapped_column(String(50), nullable=False)
-    evidence: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
-    features: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
-    verification: Mapped[dict | None] = mapped_column(JSON)

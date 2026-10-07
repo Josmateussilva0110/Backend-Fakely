@@ -2,6 +2,7 @@
 # Use com a extensão "REST Client" (VS Code) ou o HTTP Client do JetBrains:
 # clique em "Send Request" acima de cada bloco.
 # Copie o valor de ADMIN_API_KEY do seu .env para @adminKey (não versione a chave real).
+# As classificações esperadas dependem do que as fontes externas publicam no momento.
 
 @baseUrl = http://localhost:8000
 @api = {{baseUrl}}/api/v1
@@ -11,8 +12,8 @@
 GET {{baseUrl}}/health
 
 
-### 2. Alegação falsa já checada pela Lupa → esperado: likely_false + link da Lupa
-POST {{api}}/news
+### 2. Alegação falsa já checada pela Lupa → esperado: likely_false + evidência da Lupa
+POST {{api}}/news-analyses
 Content-Type: application/json
 
 {
@@ -21,8 +22,8 @@ Content-Type: application/json
 }
 
 
-### 3. Notícia real publicada na Folha → esperado: likely_true + link da Folha
-POST {{api}}/news
+### 3. Notícia publicada na Folha → esperado: likely_true + evidência da Folha
+POST {{api}}/news-analyses
 Content-Type: application/json
 
 {
@@ -31,8 +32,8 @@ Content-Type: application/json
 }
 
 
-### 4. Texto sensacionalista, fonte desconhecida → esperado: likely_false (heurística)
-POST {{api}}/news
+### 4. Texto sensacionalista sem evidências → esperado: inconclusive (estilo vira só alerta)
+POST {{api}}/news-analyses
 Content-Type: application/json
 
 {
@@ -42,29 +43,17 @@ Content-Type: application/json
 }
 
 
-### 5. Texto neutro com fonte reconhecida → esperado: likely_true
-POST {{api}}/news
+### 5. Só a URL → o back-end lê a página (troque por uma notícia real)
+POST {{api}}/news-analyses
 Content-Type: application/json
 
 {
-  "text": "O Ministério da Saúde divulgou nesta segunda-feira o boletim semanal com os dados de vacinação. Segundo o órgão, a cobertura vacinal aumentou em relação ao mês anterior.",
-  "url": "https://g1.globo.com/saude/noticia/2026/10/05/boletim-vacinacao.ghtml",
-  "source": "G1",
-  "published_at": "2026-10-05"
+  "url": "https://agenciabrasil.ebc.com.br/"
 }
 
 
-### 6. Texto neutro sem correspondência e sem fonte → esperado: inconclusive
-POST {{api}}/news
-Content-Type: application/json
-
-{
-  "text": "A prefeitura de uma pequena cidade do interior inaugurou hoje uma nova praça com bancos de madeira e iluminação."
-}
-
-
-### 7. Texto curto (RN07) → esperado: inconclusive, confidence null
-POST {{api}}/news
+### 6. Texto curto (RN07) → esperado: inconclusive, sem busca
+POST {{api}}/news-analyses
 Content-Type: application/json
 
 {
@@ -74,25 +63,32 @@ Content-Type: application/json
 
 ### ---------- Validações (todas devem retornar 422) ----------
 
+### 7. Sem texto e sem URL
+POST {{api}}/news-analyses
+Content-Type: application/json
+
+{
+  "title": "Só título"
+}
+
 ### 8. Texto vazio (RN02)
-POST {{api}}/news
+POST {{api}}/news-analyses
 Content-Type: application/json
 
 {
   "text": "    "
 }
 
-### 9. URL inválida
-POST {{api}}/news
+### 9. URL de rede interna (proteção contra SSRF)
+POST {{api}}/news-analyses
 Content-Type: application/json
 
 {
-  "text": "Texto qualquer com palavras suficientes para análise",
-  "url": "isso-nao-e-url"
+  "url": "http://169.254.169.254/latest/meta-data"
 }
 
 ### 10. Data de publicação no futuro
-POST {{api}}/news
+POST {{api}}/news-analyses
 Content-Type: application/json
 
 {
@@ -101,7 +97,7 @@ Content-Type: application/json
 }
 
 ### 11. Cliente tentando definir a classificação (campo proibido)
-POST {{api}}/news
+POST {{api}}/news-analyses
 Content-Type: application/json
 
 {
@@ -112,28 +108,34 @@ Content-Type: application/json
 
 ### ---------- Consultas ----------
 
-### 12. Listar (paginado)
-GET {{api}}/news?page=1&page_size=5
+### 12. Listar análises (paginado)
+GET {{api}}/news-analyses?page=1&page_size=5
 
-### 13. Filtrar por classificação e ordenar por confiança
-GET {{api}}/news?classification=likely_false&order_by=-confidence
+### 13. Filtrar por classificação e status da verificação
+GET {{api}}/news-analyses?classification=likely_false&verification_status=complete&order_by=-analyzed_at
 
-### 14. Filtrar por período
-GET {{api}}/news?analyzed_from=2026-10-01T00:00:00Z&analyzed_to=2026-12-31T23:59:59Z
+### 14. Detalhar análise (troque o id)
+GET {{api}}/news-analyses/1
 
-### 15. Detalhar (troque o id)
-GET {{api}}/news/1
+### 15. Listar notícias
+GET {{api}}/news?page=1&page_size=5&order_by=-created_at
 
-### 16. Inexistente → 404
-GET {{api}}/news/999999
+### 16. Análises de uma notícia (troque o id)
+GET {{api}}/news/1/analyses
 
-### 17. Parâmetros inválidos → 422
-GET {{api}}/news?page_size=1000&order_by=text
+### 17. Reanalisar a notícia (nova busca, ignora o cache)
+POST {{api}}/news/1/analyses
+
+### 18. Inexistente → 404
+GET {{api}}/news-analyses/999999
+
+### 19. Parâmetros inválidos → 422
+GET {{api}}/news-analyses?page_size=1000&order_by=text
 
 
 ### ---------- Operações administrativas ----------
 
-### 18. Editar sem chave → 403
+### 20. Editar sem chave → 403
 PATCH {{api}}/news/1
 Content-Type: application/json
 
@@ -141,16 +143,15 @@ Content-Type: application/json
   "title": "Novo título"
 }
 
-### 19. Editar com chave → 200 e análise refeita (troque o id)
+### 21. Editar com chave → 200 (as análises anteriores são mantidas)
 PATCH {{api}}/news/1
 Content-Type: application/json
 X-API-Key: {{adminKey}}
 
 {
-  "text": "O Ministério da Saúde divulgou o boletim semanal com os dados de vacinação do país.",
-  "url": "https://g1.globo.com/saude/x.ghtml"
+  "title": "Título corrigido"
 }
 
-### 20. Remover com chave → 204 (troque o id)
+### 22. Remover com chave → 204 (remove também as análises e evidências)
 DELETE {{api}}/news/1
 X-API-Key: {{adminKey}}

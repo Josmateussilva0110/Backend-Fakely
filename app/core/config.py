@@ -31,16 +31,16 @@ class Settings(BaseSettings):
     rate_limit_create: str = "10/minute"
     rate_limit_storage_uri: str = "memory://"
 
-    model_path: Path = BASE_DIR / "app" / "ml" / "news_classifier.joblib"
     analysis_rules_path: Path = BASE_DIR / "app" / "data" / "analysis_rules.json"
-    # RN07: abaixo deste nível de confiança o resultado é inconclusivo
-    confidence_threshold: float = 0.6
-    min_words: int = 5
-    # Peso do modelo de ML na combinação com a heurística
-    model_weight: float = 0.7
+    source_registry_path: Path = BASE_DIR / "app" / "data" / "source_registry.json"
+    # Identifica a versão das regras de decisão gravada em cada análise (auditoria)
+    analysis_version: str = "evidence-rules-1"
     max_text_length: int = 100_000
+    # Abaixo deste número de palavras não há afirmação verificável (RN07)
+    min_words: int = 5
+    claim_max_length: int = 500
 
-    # Verificação nos sites confiáveis (Lupa, Boatos.org, Folha)
+    # Busca de evidências (Lupa, Boatos.org, Folha e, com chave, Google Fact Check)
     verification_enabled: bool = True
     verification_sources_path: Path = BASE_DIR / "app" / "data" / "verification_sources.json"
     verification_user_agent: str = "FakeNewsDetectionMVP/1.0 (projeto academico)"
@@ -50,11 +50,24 @@ class Settings(BaseSettings):
     verification_max_results: int = 5
     verification_max_keywords: int = 4
     verification_min_keywords: int = 2
-    # Similaridade mínima para listar um resultado e para uma checagem decidir a classificação
-    verification_min_similarity: float = 0.5
-    verification_fact_check_min_similarity: float = 0.7
-    verification_min_overlap: int = 2
-    verification_excerpt_max_length: int = 300
+    google_fact_check_api_key: SecretStr | None = None
+    google_fact_check_language_code: str = "pt-BR"
+
+    # Evidências: relevância mínima para listar e para pesar na decisão
+    evidence_min_relevance: float = 0.5
+    evidence_min_overlap: int = 2
+    evidence_excerpt_max_length: int = 300
+    evidence_outdated_after_days: int = 730
+    decision_min_relevance: float = 0.7
+    # Suficiência: fontes independentes necessárias para concluir
+    decision_min_supporting_sources: int = 1
+    decision_min_contradicting_sources: int = 1
+
+    # Leitura da página quando o usuário envia só a URL (com proteção contra SSRF)
+    page_fetch_enabled: bool = True
+    page_fetch_timeout_seconds: float = 8.0
+    page_fetch_max_bytes: int = 3_000_000
+    page_fetch_max_redirects: int = 3
 
     default_page_size: int = 20
     max_page_size: int = 100

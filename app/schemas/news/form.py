@@ -10,17 +10,17 @@ NewsUrl = Annotated[HttpUrl, UrlConstraints(max_length=URL_MAX_LENGTH)]
 
 
 class NewsForm(BaseModel):
-    """Campos e validações compartilhados por create e update."""
+    """Campos e validações compartilhados pela criação da análise e pela edição da notícia."""
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    text: str = Field(..., max_length=get_settings().max_text_length)
+    text: str | None = Field(None, max_length=get_settings().max_text_length)
     title: str | None = Field(None, max_length=TITLE_MAX_LENGTH)
     url: NewsUrl | None = None
     source: str | None = Field(None, max_length=SOURCE_MAX_LENGTH)
     published_at: date | None = None
 
-    # RN02: o texto não pode estar vazio (os espaços já foram removidos)
+    # RN02: o texto, quando enviado, não pode estar vazio (os espaços já foram removidos)
     @field_validator("text")
     @classmethod
     def text_not_blank(cls, value: str | None) -> str | None:
