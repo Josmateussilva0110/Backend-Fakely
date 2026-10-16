@@ -25,6 +25,14 @@
       "default_verdict": null
     },
     {
+      "key": "veja",
+      "name": "Veja",
+      "client": "wordpress",
+      "search_url": "https://veja.abril.com.br/wp-json/wp/v2/posts",
+      "allowed_domains": ["veja.abril.com.br"],
+      "default_verdict": null
+    },
+    {
       "key": "google_fact_check",
       "name": "Google Fact Check Tools",
       "client": "google_fact_check",
