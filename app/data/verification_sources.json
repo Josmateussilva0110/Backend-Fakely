@@ -42,5 +42,9 @@
     "true": [
       "é verdade que", "é verdadeiro", "verdadeiro:", "#verdadeiro", "é verdadeira"
     ]
-  }
+  },
+  "denial_terms": [
+    "nega", "negou", "negam", "desmente", "desmentiu", "descarta", "descartou",
+    "não será", "não vai", "não é", "recusa", "recusou"
+  ]
 }

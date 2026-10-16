@@ -10,7 +10,7 @@ from app.core.config import Settings
 from app.integrations.search_client import SearchResult
 from app.services.evidence_search_service import SearchOutcome
 from app.services.source_registry_service import SourceRegistry
-from app.services.text_processing_service import normalize_text, tokenize
+from app.services.text_processing_service import find_terms, normalize_text, tokenize
 from app.services.verification_config_service import (
     Verdict,
     VerdictPatterns,
@@ -54,16 +54,19 @@ class EvidenceService:
     ):
         self.settings = settings
         self.verdict_patterns: VerdictPatterns = config.verdict_patterns
+        self.denial_terms = config.denial_terms
         self.registry = registry
         self.stopwords = stopwords
 
     def build_evidences(self, outcome: SearchOutcome, claim: str, title: str | None = None) -> list[EvidenceItem]:
-        claim_stems = self.stems(f"{title or ''} {claim}")
+        claim_text = normalize_text(f"{title or ''} {claim}")
+        claim_stems = self.stems(claim_text)
         candidates = [
             evidence
             for source_results in outcome.results
             for result in source_results.results
-            if (evidence := self._to_evidence(source_results.source, result, claim_stems, outcome.accessed_at))
+            if (evidence := self._to_evidence(source_results.source, result, claim_text, claim_stems,
+                                              outcome.accessed_at))
         ]
         unique = self.deduplicate(candidates)
         # Mais relevantes primeiro; com veredito explícito antes, em caso de empate
@@ -74,6 +77,7 @@ class EvidenceService:
         self,
         provider: VerificationSourceConfig,
         result: SearchResult,
+        claim_text: str,
         claim_stems: set[str],
         accessed_at: datetime,
     ) -> EvidenceItem | None:
@@ -96,13 +100,18 @@ class EvidenceService:
             published_at=result.published_at,
             accessed_at=accessed_at,
             relevance=round(relevance, 3),
-            stance=self.detect_stance(verdict, category, relevance),
+            stance=self.detect_stance(verdict, category, relevance, self.is_denial(result.title, claim_text)),
             verdict=verdict,
             independent=True,
         )
 
     def compute_relevance(self, result_title: str, claim_stems: set[str]) -> tuple[float, int]:
-        """Fração do título do resultado coberta pela afirmação analisada."""
+        """Semelhança entre o título do resultado e a afirmação, de 0 a 1.
+
+        Usa o maior valor entre a fração do título coberta pela afirmação (boa para afirmações
+        longas) e o coeficiente de Dice (não pune manchetes que trazem a afirmação inteira mais
+        detalhes, como "Corinthians anuncia Clarence Seedorf como novo técnico").
+        """
         title = normalize_text(result_title)
         # Remove o veredito ("é falso que...") para comparar só o assunto
         for pattern in (*self.verdict_patterns.false, *self.verdict_patterns.true):
@@ -111,7 +120,9 @@ class EvidenceService:
         if not title_stems:
             return 0.0, 0
         overlap = len(title_stems & claim_stems)
-        return overlap / len(title_stems), overlap
+        title_coverage = overlap / len(title_stems)
+        dice = 2 * overlap / (len(title_stems) + len(claim_stems))
+        return max(title_coverage, dice), overlap
 
     def detect_verdict(
         self, provider: VerificationSourceConfig, result: SearchResult, category: EvidenceCategory
@@ -130,13 +141,21 @@ class EvidenceService:
             return "true"
         return None
 
-    def detect_stance(self, verdict: Verdict | None, category: EvidenceCategory, relevance: float) -> Stance:
+    def is_denial(self, result_title: str, claim_text: str) -> bool:
+        """Título com desmentido ("nega", "descarta") que a própria afirmação não contém."""
+        found = find_terms(normalize_text(result_title), self.denial_terms)
+        return any(term not in find_terms(claim_text, self.denial_terms) for term in found)
+
+    def detect_stance(
+        self, verdict: Verdict | None, category: EvidenceCategory, relevance: float, denial: bool = False
+    ) -> Stance:
         if verdict == "false":
             return "contradicts"
         if verdict == "true":
             return "supports"
-        # Reportagem sobre o mesmo fato, em fonte com apuração própria, sustenta a afirmação
-        if category in REPORTING_CATEGORIES and relevance >= self.settings.decision_min_relevance:
+        # Reportagem sobre o mesmo fato, em fonte com apuração própria, sustenta a afirmação;
+        # se o título desmente algo, a palavra em comum não basta para concluir
+        if category in REPORTING_CATEGORIES and relevance >= self.settings.decision_min_relevance and not denial:
             return "supports"
         return "neutral"
 

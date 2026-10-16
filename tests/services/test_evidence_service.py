@@ -81,3 +81,45 @@ def test_detect_verdict_checks_false_before_true(evidence_service, verification_
     assert detect(lupa, make_result("É verdade que X", "u"), "fact_checker") == "true"
     assert detect(lupa, make_result("Entenda o caso X", "u"), "fact_checker") is None
     assert detect(lupa, make_result("É falso que X", "u"), "news_outlet") is None
+
+
+SEEDORF_CLAIM = "Seedorf é o novo técnico do Corinthians"
+
+
+def build_for(evidence_service, verification_config, claim, results):
+    return evidence_service.build_evidences(make_outcome(verification_config, results), claim)
+
+
+def test_headline_with_extra_details_supports_short_claim(evidence_service, verification_config):
+    evidences = build_for(evidence_service, verification_config, SEEDORF_CLAIM, {
+        "folha": [make_result("Corinthians anuncia Clarence Seedorf como novo técnico",
+                              "https://www1.folha.uol.com.br/esporte/seedorf.shtml")],
+        "veja": [make_result("Corinthians surpreende e anuncia Clarence Seedorf como novo técnico",
+                             "https://veja.abril.com.br/esporte/seedorf")],
+    })
+    assert [e.stance for e in evidences] == ["supports", "supports"]
+
+
+def test_denial_in_headline_does_not_support(evidence_service, verification_config):
+    evidences = build_for(evidence_service, verification_config, SEEDORF_CLAIM, {
+        "folha": [make_result("Corinthians nega que Seedorf seja o novo técnico",
+                              "https://www1.folha.uol.com.br/esporte/nega.shtml")],
+    })
+    assert evidences[0].stance == "neutral"
+
+
+def test_denial_present_in_claim_does_not_block(evidence_service, verification_config):
+    claim = "Corinthians nega que Seedorf seja o novo técnico"
+    evidences = build_for(evidence_service, verification_config, claim, {
+        "folha": [make_result("Corinthians nega que Seedorf seja o novo técnico do time",
+                              "https://www1.folha.uol.com.br/esporte/nega.shtml")],
+    })
+    assert evidences[0].stance == "supports"
+
+
+def test_short_claim_inside_unrelated_headline_does_not_support(evidence_service, verification_config):
+    evidences = build_for(evidence_service, verification_config, "Lula morreu", {
+        "folha": [make_result("Lula visita hospital onde paciente morreu",
+                              "https://www1.folha.uol.com.br/poder/visita.shtml")],
+    })
+    assert all(e.stance != "supports" for e in evidences)
