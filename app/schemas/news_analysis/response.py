@@ -42,7 +42,6 @@ class EvidenceResponse(BaseModel):
     relevance: float
     stance: Literal["supports", "contradicts", "neutral"]
     verdict: Literal["false", "true"] | None
-    rating: str | None
     independent: bool
 
 

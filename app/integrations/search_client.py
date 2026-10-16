@@ -19,9 +19,6 @@ class SearchResult:
     url: str
     excerpt: str
     published_at: date | None
-    # Preenchidos por APIs de checagem: classificação textual e quem publicou a checagem
-    rating: str | None = None
-    publisher_name: str | None = None
 
 
 class SearchClient(Protocol):

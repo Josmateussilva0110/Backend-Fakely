@@ -10,7 +10,6 @@ import httpx
 
 from app.core.config import Settings
 from app.integrations.folha_search_client import FolhaSearchClient
-from app.integrations.google_fact_check_client import GoogleFactCheckClient
 from app.integrations.search_client import HttpFetcher, SearchClient, SearchError, SearchResult
 from app.integrations.wordpress_search_client import WordpressSearchClient
 from app.services.text_processing_service import normalize_text
@@ -55,28 +54,15 @@ class EvidenceSearchService:
         cls, settings: Settings, config: VerificationConfig, stopwords: frozenset[str], http_client: httpx.Client
     ) -> "EvidenceSearchService":
         fetcher = HttpFetcher(http_client, settings.verification_max_response_bytes)
-        providers = []
-        for source in config.sources:
-            client = cls._build_client(settings, source, fetcher)
-            if client is not None:
-                providers.append(SearchProvider(source, client))
+        providers = [SearchProvider(source, cls._build_client(source, fetcher)) for source in config.sources]
         return cls(settings, stopwords, providers)
 
     @staticmethod
-    def _build_client(
-        settings: Settings, source: VerificationSourceConfig, fetcher: HttpFetcher
-    ) -> SearchClient | None:
+    def _build_client(source: VerificationSourceConfig, fetcher: HttpFetcher) -> SearchClient:
         url, domains = str(source.search_url), source.allowed_domains
         if source.client == "wordpress":
             return WordpressSearchClient(fetcher, url, domains)
-        if source.client == "folha":
-            return FolhaSearchClient(fetcher, url, domains)
-        # Google Fact Check só é usado quando há chave configurada
-        if settings.google_fact_check_api_key is None:
-            return None
-        return GoogleFactCheckClient(
-            fetcher, url, domains, settings.google_fact_check_api_key, settings.google_fact_check_language_code
-        )
+        return FolhaSearchClient(fetcher, url, domains)
 
     @property
     def provider_names(self) -> tuple[str, ...]:

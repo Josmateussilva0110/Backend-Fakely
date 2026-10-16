@@ -15,7 +15,7 @@ def make_evidence(stance: str, organization: str = "lupa", category: str = "fact
         position=1, source_name=organization, organization=organization, category=category,
         retrieved_via="x", title="t", url=f"https://{organization}.org/1", excerpt="", published_at=None,
         accessed_at=datetime.now(timezone.utc), relevance=relevance, stance=stance,
-        verdict=None, rating=None, independent=independent,
+        verdict=None, independent=independent,
     )
 
 

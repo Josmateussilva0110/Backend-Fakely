@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     min_words: int = 5
     claim_max_length: int = 500
 
-    # Busca de evidências (Lupa, Folha, CNN Brasil, Veja e, com chave, Google Fact Check)
+    # Busca de evidências (Lupa, Folha, CNN Brasil e Veja)
     verification_enabled: bool = True
     verification_sources_path: Path = BASE_DIR / "app" / "data" / "verification_sources.json"
     verification_user_agent: str = "FakeNewsDetectionMVP/1.0 (projeto academico)"
@@ -50,8 +50,6 @@ class Settings(BaseSettings):
     verification_max_results: int = 5
     verification_max_keywords: int = 4
     verification_min_keywords: int = 2
-    google_fact_check_api_key: SecretStr | None = None
-    google_fact_check_language_code: str = "pt-BR"
 
     # Evidências: relevância mínima para listar e para pesar na decisão
     evidence_min_relevance: float = 0.5

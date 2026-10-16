@@ -1,5 +1,3 @@
-from pydantic import SecretStr
-
 from app.services.evidence_search_service import EvidenceSearchService, SearchProvider
 from tests.fakes import FakeSearchClient, make_result
 
@@ -14,19 +12,7 @@ def build_service(settings, config, rules, clients: dict) -> EvidenceSearchServi
 
 def test_config_lists_search_providers(verification_config):
     keys = [s.key for s in verification_config.sources]
-    assert keys == ["lupa", "folha", "cnn_brasil", "veja", "google_fact_check"]
-
-
-def test_google_fact_check_is_only_enabled_with_api_key(settings, verification_config, rules):
-    import httpx
-
-    with httpx.Client() as http:
-        without_key = EvidenceSearchService.build(settings, verification_config, rules.stopwords, http)
-        assert "Google Fact Check Tools" not in without_key.provider_names
-        with_key = settings.model_copy(update={"google_fact_check_api_key": SecretStr("k")})
-        assert "Google Fact Check Tools" in EvidenceSearchService.build(
-            with_key, verification_config, rules.stopwords, http
-        ).provider_names
+    assert keys == ["lupa", "folha", "cnn_brasil", "veja"]
 
 
 def test_extract_keywords_prefers_specific_words(settings, verification_config, rules):

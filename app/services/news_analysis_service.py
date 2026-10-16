@@ -117,6 +117,5 @@ def to_evidence(item: EvidenceItem) -> Evidence:
         relevance=item.relevance,
         stance=item.stance,
         verdict=item.verdict,
-        rating=item.rating,
         independent=item.independent,
     )

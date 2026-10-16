@@ -41,7 +41,6 @@ class EvidenceItem:
     relevance: float
     stance: Stance
     verdict: Verdict | None
-    rating: str | None
     # Falso quando é republicação ou outra publicação da mesma organização
     independent: bool
 
@@ -52,7 +51,6 @@ class EvidenceService:
     ):
         self.settings = settings
         self.verdict_patterns: VerdictPatterns = config.verdict_patterns
-        self.rating_patterns: VerdictPatterns = config.rating_patterns
         self.registry = registry
         self.stopwords = stopwords
 
@@ -85,7 +83,7 @@ class EvidenceService:
         verdict = self.detect_verdict(provider, result, category)
         return EvidenceItem(
             position=0,
-            source_name=result.publisher_name or (registered.name if registered else provider.name),
+            source_name=registered.name if registered else provider.name,
             organization=registered.key if registered else (urlparse(result.url).hostname or "").removeprefix("www."),
             category=category,
             retrieved_via=provider.name,
@@ -97,7 +95,6 @@ class EvidenceService:
             relevance=round(relevance, 3),
             stance=self.detect_stance(verdict, category, relevance),
             verdict=verdict,
-            rating=result.rating,
             independent=True,
         )
 
@@ -116,8 +113,6 @@ class EvidenceService:
     def detect_verdict(
         self, provider: VerificationSourceConfig, result: SearchResult, category: EvidenceCategory
     ) -> Verdict | None:
-        if result.rating:
-            return self._match_verdict(normalize_text(result.rating), self.rating_patterns)
         if category != "fact_checker":
             return None
         content = normalize_text(f"{result.title} {result.excerpt[:VERDICT_SCAN_LENGTH]}")

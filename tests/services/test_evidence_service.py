@@ -43,27 +43,12 @@ def test_news_outlet_report_supports_only_when_highly_relevant(evidence_service,
     assert weak is None or weak.stance == "neutral"
 
 
-def test_rating_from_fact_check_api_defines_verdict(evidence_service, verification_config):
-    evidences = build(evidence_service, verification_config, {"google_fact_check": [
-        make_result("Ivermectina tem 70% de eficácia contra a Covid", "https://www.aosfatos.org/noticias/x/",
-                    rating="Falso", publisher_name="Aos Fatos"),
-        make_result("Ivermectina tem 70% de eficácia contra a Covid", "https://checamos.afp.com/y",
-                    rating="Sem contexto", publisher_name="AFP Checamos"),
-    ]})
-    by_source = {e.source_name: e for e in evidences}
-    assert by_source["Aos Fatos"].stance == "contradicts"
-    assert by_source["Aos Fatos"].retrieved_via == "Google Fact Check Tools"
-    assert by_source["AFP Checamos"].stance == "neutral"
-    # Checagens de agências diferentes sobre a mesma alegação são independentes
-    assert all(e.independent for e in evidences)
-
-
 def test_same_page_from_two_providers_is_deduplicated(evidence_service, verification_config):
     evidences = build(evidence_service, verification_config, {
         "lupa": [make_result("É falso que ivermectina tem 70% de eficácia contra Covid",
                              "https://www.agencialupa.org/checagem/x")],
-        "google_fact_check": [make_result("Ivermectina tem 70% de eficácia contra a Covid",
-                                          "https://agencialupa.org/checagem/x/", rating="Falso")],
+        "cnn_brasil": [make_result("Ivermectina tem 70% de eficácia contra a Covid",
+                                   "https://agencialupa.org/checagem/x/")],
     })
     assert len(evidences) == 1
 
@@ -72,7 +57,7 @@ def test_same_organization_and_republications_are_not_independent(evidence_servi
     evidences = build(evidence_service, verification_config, {"folha": [
         make_result("Ivermectina tem 70% de eficácia contra Covid, diz estudo", "https://www1.folha.uol.com.br/a"),
         make_result("Ivermectina tem 70% de eficácia contra Covid, diz estudo", "https://www1.folha.uol.com.br/b"),
-    ], "google_fact_check": [
+    ], "cnn_brasil": [
         # Republicação do mesmo texto em outro veículo
         make_result("Ivermectina tem 70% de eficácia contra Covid, diz estudo", "https://g1.globo.com/c"),
     ]})
@@ -81,9 +66,9 @@ def test_same_organization_and_republications_are_not_independent(evidence_servi
 
 
 def test_unregistered_domain_is_unknown(evidence_service, verification_config):
-    evidences = build(evidence_service, verification_config, {"google_fact_check": [
+    evidences = build(evidence_service, verification_config, {"cnn_brasil": [
         make_result("Ivermectina tem 70% de eficácia contra a Covid", "https://blog-desconhecido.net/x",
-                    rating="Verdadeiro", published_at=date(2020, 1, 1)),
+                    published_at=date(2020, 1, 1)),
     ]})
     assert evidences[0].category == "unknown"
     assert evidences[0].organization == "blog-desconhecido.net"

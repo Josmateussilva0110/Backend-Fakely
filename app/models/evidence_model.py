@@ -32,5 +32,4 @@ class Evidence(Base):
     relevance: Mapped[float] = mapped_column(Float, nullable=False)
     stance: Mapped[str] = mapped_column(String(20), nullable=False)
     verdict: Mapped[str | None] = mapped_column(String(10))
-    rating: Mapped[str | None] = mapped_column(String(NAME_MAX_LENGTH))
     independent: Mapped[bool] = mapped_column(Boolean, nullable=False)

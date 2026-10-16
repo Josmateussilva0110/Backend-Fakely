@@ -121,8 +121,6 @@ def _cite(evidences) -> str:
     cited = []
     for evidence in list(evidences)[:MAX_CITED_EVIDENCES]:
         details = [f"\"{evidence.title}\""]
-        if evidence.rating:
-            details.append(f"classificada como \"{evidence.rating}\"")
         if evidence.published_at:
             details.append(evidence.published_at.strftime("%d/%m/%Y"))
         cited.append(f"{evidence.source_name} ({', '.join(details)})")
