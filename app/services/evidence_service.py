@@ -12,7 +12,10 @@ from app.services.evidence_search_service import SearchOutcome
 from app.services.source_registry_service import SourceRegistry
 from app.services.text_processing_service import normalize_text, tokenize
 from app.services.verification_config_service import (
-    Verdict, VerdictPatterns, VerificationConfig, VerificationSourceConfig,
+    Verdict,
+    VerdictPatterns,
+    VerificationConfig,
+    VerificationSourceConfig,
 )
 
 Stance = Literal["supports", "contradicts", "neutral"]

@@ -14,6 +14,15 @@ Funciona em **Linux, macOS e Windows**. Quando o comando muda entre os sistemas,
 
 **Pré-requisitos:** Python 3.12 e Docker (no Windows, [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)).
 
+As dependências ficam em dois arquivos:
+
+| Arquivo | Conteúdo | Quando usar |
+|---|---|---|
+| `requirements.txt` | Só o necessário para a API rodar | Produção (é o que a imagem Docker instala) |
+| `requirements-dev.txt` | Tudo do `requirements.txt` + `pytest` e `ruff` | Desenvolvimento |
+
+## Desenvolvimento
+
 ### 1. Ambiente Python
 
 Linux/macOS:
@@ -21,7 +30,7 @@ Linux/macOS:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 Windows (PowerShell):
@@ -29,7 +38,7 @@ Windows (PowerShell):
 ```powershell
 py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 - Ative o venv em **todo terminal novo**: o prompt passa a mostrar `(.venv)`.
@@ -43,6 +52,8 @@ Linux/macOS: `cp .env.example .env` · Windows: `copy .env.example .env`
 No `.env`, defina:
 - `POSTGRES_PASSWORD`, usando a mesma senha dentro de `DATABASE_URL`;
 - `ADMIN_API_KEY`, gerada com `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+
+O `.env.example` já vem pronto para desenvolvimento: `RELOAD=true` (reinicia a API ao salvar um arquivo) e `DOCS_ENABLED=true` (libera o `/docs`).
 
 ### 3. Banco de dados
 
@@ -70,7 +81,7 @@ python -m app
 ```
 
 - API: http://localhost:8000/api/v1
-- Documentação: http://localhost:8000/docs (com `DOCS_ENABLED=true`)
+- Documentação: http://localhost:8000/docs
 - Status: http://localhost:8000/health
 
 ### 5. Front-end
@@ -87,16 +98,55 @@ python scripts/playground.py       # http://localhost:5173
 
 ```bash
 pytest                             # automatizados (sem banco e sem internet)
+ruff check .                       # lint (imports sem uso, ordem, estilo)
 python scripts/smoke_test.py       # ponta a ponta, com a API rodando
 ```
 
 Para testar requisição por requisição, use [`docs/api-tests.http`](docs/api-tests.http).
 
-### Opcional: tudo em Docker
+## Produção
+
+### 1. Configuração
+
+Crie o `.env` a partir do `.env.example` e ajuste:
+
+| Variável | Valor em produção |
+|---|---|
+| `ENVIRONMENT` | `production` |
+| `RELOAD` | `false` |
+| `DOCS_ENABLED` | `false` (não expõe `/docs` nem `/openapi.json`) |
+| `CORS_ORIGINS` | Só o domínio real do front, ex.: `["https://meusite.com.br"]` |
+| `POSTGRES_PASSWORD` | Senha forte, diferente da de desenvolvimento (e igual à de `DATABASE_URL`) |
+| `ADMIN_API_KEY` | Chave nova, gerada com o comando do passo 2 de desenvolvimento |
+
+Nunca versione o `.env` (ele já está no `.gitignore`).
+
+### 2. Execução com Docker (recomendado)
 
 ```bash
 docker compose --profile api up -d --build
 ```
+
+- A imagem instala só o `requirements.txt` (sem `pytest` e `ruff`) e roda sem usuário root.
+- Ao iniciar, o container aplica as migrações (`alembic upgrade head`) e depois sobe a API.
+- A API fica em `127.0.0.1:8000`, acessível só pela própria máquina. Para publicar, coloque um proxy reverso com HTTPS (Nginx, Caddy) na frente.
+
+Para atualizar depois de um `git pull`, rode o mesmo comando: ele reconstrói a imagem e aplica as migrações novas.
+
+### 3. Execução sem Docker
+
+Com o PostgreSQL já disponível e o `DATABASE_URL` apontando para ele:
+
+```bash
+pip install -r requirements.txt    # só as dependências de produção
+alembic upgrade head
+python -m app
+```
+
+### Observações
+
+- O limite de análises por minuto (`RATE_LIMIT_CREATE`) fica na memória do processo (`RATE_LIMIT_STORAGE_URI=memory://`). Ele zera quando a API reinicia e não é compartilhado entre várias instâncias.
+- Atrás de um proxy reverso, a API vê o IP do proxy, e não o do usuário. Com isso, o limite por minuto passa a valer para todos os usuários juntos.
 
 ## Endpoints (`/api/v1`)
 

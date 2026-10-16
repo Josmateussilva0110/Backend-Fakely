@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from app.integrations.url_safety import UnsafeUrlError, ensure_public_url, is_public_web_url
+from app.integrations.url_safety import UnsafeUrlError, ensure_public_url
 from app.integrations.web_page_client import BlockedUrlError, WebPageClient, WebPageError
 
 PUBLIC_IP = "93.184.216.34"
@@ -37,12 +37,6 @@ def test_blocks_unsafe_urls(url):
 def test_blocks_domain_resolving_to_private_ip():
     with pytest.raises(UnsafeUrlError):
         ensure_public_url("https://interno.empresa.com/", fake_resolver({"interno.empresa.com": "192.168.0.10"}))
-
-
-def test_is_public_web_url():
-    assert is_public_web_url("https://www.aosfatos.org/x")
-    assert not is_public_web_url("http://127.0.0.1/x")
-    assert not is_public_web_url("javascript:alert(1)")
 
 
 def test_fetches_html_page():

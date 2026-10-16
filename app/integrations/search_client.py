@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from app.integrations.http_utils import ResponseTooLargeError, read_limited
+
 
 class SearchError(Exception):
     pass
@@ -45,22 +47,16 @@ class HttpFetcher:
         self.client = client
         self.max_response_bytes = max_response_bytes
 
-    def get_text(
-        self, url: str, params: dict, allowed_domains: tuple[str, ...], headers: dict | None = None
-    ) -> str:
+    def get_text(self, url: str, params: dict, allowed_domains: tuple[str, ...]) -> str:
         try:
-            with self.client.stream("GET", url, params=params, headers=headers) as response:
+            with self.client.stream("GET", url, params=params) as response:
                 if response.status_code != 200:
                     raise SearchError(f"HTTP {response.status_code} em {url}")
                 # Redirecionamento para outro domínio é rejeitado
                 if not is_allowed_url(str(response.url), allowed_domains):
                     raise SearchError(f"Redirecionamento inesperado para {response.url.host}")
-                chunks, size = [], 0
-                for chunk in response.iter_bytes():
-                    size += len(chunk)
-                    if size > self.max_response_bytes:
-                        raise SearchError(f"Resposta maior que o limite em {url}")
-                    chunks.append(chunk)
-                return b"".join(chunks).decode(response.encoding or "utf-8", errors="replace")
+                return read_limited(response, self.max_response_bytes)
+        except ResponseTooLargeError as exc:
+            raise SearchError(f"Resposta maior que o limite em {url}") from exc
         except httpx.HTTPError as exc:
             raise SearchError(f"Falha de rede em {url}: {exc.__class__.__name__}") from exc

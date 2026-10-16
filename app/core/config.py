@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", extra="ignore")
 
     app_name: str = "Fake News Detection API"
+    app_version: str = "2.0.0"
     environment: Literal["development", "test", "production"] = "development"
     api_prefix: str = "/api/v1"
     # 127.0.0.1 por padrão: só aceita conexões da própria máquina
@@ -45,6 +46,7 @@ class Settings(BaseSettings):
     verification_sources_path: Path = BASE_DIR / "app" / "data" / "verification_sources.json"
     verification_user_agent: str = "FakeNewsDetectionMVP/1.0 (projeto academico)"
     verification_timeout_seconds: float = 5.0
+    verification_max_redirects: int = 3
     verification_total_timeout_seconds: float = 12.0
     verification_max_response_bytes: int = 2_000_000
     verification_max_results: int = 5

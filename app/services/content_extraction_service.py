@@ -1,11 +1,12 @@
 """Extrai título, texto e data de publicação da página informada pelo usuário."""
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 
 from bs4 import BeautifulSoup
 
 from app.core.exceptions import UnprocessableError
+from app.core.parsing import parse_iso_date
 from app.integrations.web_page_client import BlockedUrlError, WebPageClient, WebPageError
 
 # Elementos que não fazem parte do conteúdo da notícia
@@ -53,7 +54,7 @@ class ContentExtractionService:
 def parse_article_html(html: str, max_text_length: int) -> ArticleContent:
     soup = BeautifulSoup(html, "html.parser")
     title = _meta_content(soup, TITLE_META) or (soup.title.get_text(" ", strip=True) if soup.title else None)
-    published_at = _parse_date(_meta_content(soup, DATE_META))
+    published_at = parse_iso_date(_meta_content(soup, DATE_META))
     for tag in soup(NOISE_TAGS):
         tag.decompose()
 
@@ -74,12 +75,3 @@ def _meta_content(soup: BeautifulSoup, candidates: tuple[tuple[str, str], ...]) 
         if tag and tag.get("content", "").strip():
             return tag["content"].strip()
     return None
-
-
-def _parse_date(value: str | None) -> date | None:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value.strip().replace("Z", "+00:00")).date()
-    except ValueError:
-        return None

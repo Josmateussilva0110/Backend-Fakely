@@ -1,10 +1,9 @@
 """Pesquisa a afirmação nos provedores de busca e checagem, em paralelo."""
 
 import logging
-import re
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -12,13 +11,12 @@ from app.core.config import Settings
 from app.integrations.folha_search_client import FolhaSearchClient
 from app.integrations.search_client import HttpFetcher, SearchClient, SearchError, SearchResult
 from app.integrations.wordpress_search_client import WordpressSearchClient
-from app.services.text_processing_service import normalize_text
+from app.services.text_processing_service import WORD_PATTERN, normalize_text
 from app.services.verification_config_service import VerificationConfig, VerificationSourceConfig
 
 logger = logging.getLogger(__name__)
 
 MIN_KEYWORD_LENGTH = 4
-_WORD_PATTERN = re.compile(r"\w+(?:[-']\w+)*")
 
 
 @dataclass(frozen=True)
@@ -101,7 +99,7 @@ class EvidenceSearchService:
             results=tuple(results),
             sources_checked=tuple(checked),
             sources_failed=tuple(failed),
-            accessed_at=datetime.now(timezone.utc),
+            accessed_at=datetime.now(UTC),
         )
 
     def extract_keywords(self, claim: str, title: str | None = None) -> list[str]:
@@ -112,7 +110,7 @@ class EvidenceSearchService:
         """
         candidates: dict[str, bool] = {}
         for chunk in (claim, title):
-            for word in _WORD_PATTERN.findall(chunk or ""):
+            for word in WORD_PATTERN.findall(chunk or ""):
                 token = normalize_text(word)
                 if (
                     len(token) < MIN_KEYWORD_LENGTH or token.isdigit()

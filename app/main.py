@@ -85,7 +85,7 @@ async def lifespan(app: FastAPI):
     http_client = httpx.Client(
         timeout=settings.verification_timeout_seconds,
         follow_redirects=True,
-        max_redirects=3,
+        max_redirects=settings.verification_max_redirects,
         headers={"User-Agent": settings.verification_user_agent},
     )
     verification_service = build_verification_service(settings, registry, http_client)
@@ -102,7 +102,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title=settings.app_name,
-        version="2.0.0",
+        version=settings.app_version,
         lifespan=lifespan,
         debug=False,
         docs_url="/docs" if settings.docs_enabled else None,
@@ -115,7 +115,7 @@ def create_app() -> FastAPI:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.cors_origins,
-            allow_credentials=True,
+            allow_credentials=False,
             allow_methods=["GET", "POST", "PATCH", "DELETE"],
             allow_headers=["Content-Type", "X-API-Key"],
         )

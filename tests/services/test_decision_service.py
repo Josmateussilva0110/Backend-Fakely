@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -14,7 +14,7 @@ def make_evidence(stance: str, organization: str = "lupa", category: str = "fact
     return EvidenceItem(
         position=1, source_name=organization, organization=organization, category=category,
         retrieved_via="x", title="t", url=f"https://{organization}.org/1", excerpt="", published_at=None,
-        accessed_at=datetime.now(timezone.utc), relevance=relevance, stance=stance,
+        accessed_at=datetime.now(UTC), relevance=relevance, stance=stance,
         verdict=None, independent=independent,
     )
 

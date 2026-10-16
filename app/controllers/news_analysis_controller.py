@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response, status
 from app.core.config import get_settings
 from app.core.dependencies import get_news_analysis_service
 from app.core.security import limiter
-from app.schemas.common import ErrorResponse, Page
+from app.schemas.common import ErrorResponse, Page, build_page
 from app.schemas.news_analysis.create import NewsAnalysisCreate
 from app.schemas.news_analysis.filters import NewsAnalysisFilters
 from app.schemas.news_analysis.response import NewsAnalysisResponse, NewsAnalysisSummaryResponse
@@ -16,16 +16,6 @@ router = APIRouter(
     tags=["news-analyses"],
     responses={422: {"model": ErrorResponse}, 429: {"model": ErrorResponse}},
 )
-
-
-def to_page(items, total: int, pages: int, filters: NewsAnalysisFilters) -> Page[NewsAnalysisSummaryResponse]:
-    return Page[NewsAnalysisSummaryResponse](
-        items=[NewsAnalysisSummaryResponse.model_validate(item) for item in items],
-        total=total,
-        page=filters.page,
-        page_size=filters.page_size,
-        pages=pages,
-    )
 
 
 @router.post("", response_model=NewsAnalysisResponse, status_code=status.HTTP_201_CREATED)
@@ -46,7 +36,7 @@ def list_news_analyses(
     filters: Annotated[NewsAnalysisFilters, Query()],
     service: NewsAnalysisService = Depends(get_news_analysis_service),
 ):
-    return to_page(*service.list(filters), filters)
+    return build_page(NewsAnalysisSummaryResponse, *service.list(filters), filters)
 
 
 @router.get("/{analysis_id}", response_model=NewsAnalysisResponse, responses={404: {"model": ErrorResponse}})
