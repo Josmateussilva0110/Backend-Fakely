@@ -378,7 +378,6 @@ function renderResult(analysis) {
       evidence.source_name,
       CATEGORY_LABELS[evidence.category],
       STANCE_LABELS[evidence.stance],
-      evidence.rating ? `classificação: "${evidence.rating}"` : null,
       formatDate(evidence.published_at),
       evidence.independent ? null : "não conta como fonte independente",
     ].filter(Boolean);

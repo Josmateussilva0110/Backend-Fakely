@@ -1,9 +1,11 @@
 from datetime import date, datetime
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, computed_field
 
 from app.models.news_analysis_model import Classification, VerificationStatus
+from app.services.evidence_service import EvidenceCategory, Stance
+from app.services.source_registry_service import SourceCategory
+from app.services.verification_config_service import Verdict
 
 CLASSIFICATION_LABELS = {
     Classification.LIKELY_TRUE: "Possivelmente verdadeira",
@@ -32,7 +34,7 @@ class EvidenceResponse(BaseModel):
 
     position: int
     source_name: str
-    category: Literal["official", "scientific", "fact_checker", "news_outlet", "unknown"]
+    category: EvidenceCategory
     retrieved_via: str
     title: str
     url: str
@@ -40,9 +42,9 @@ class EvidenceResponse(BaseModel):
     published_at: date | None
     accessed_at: datetime
     relevance: float
-    stance: Literal["supports", "contradicts", "neutral"]
-    verdict: Literal["false", "true"] | None
-    rating: str | None
+    entailment: float | None
+    stance: Stance
+    verdict: Verdict | None
     independent: bool
 
 
@@ -50,7 +52,7 @@ class SourceAssessmentResponse(BaseModel):
     domain: str
     recognized: bool
     name: str | None
-    category: Literal["official", "scientific", "fact_checker", "news_outlet"] | None
+    category: SourceCategory | None
 
 
 class NewsAnalysisSummaryResponse(BaseModel):

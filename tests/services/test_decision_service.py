@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -10,12 +10,13 @@ CHECKED = ("Agência Lupa",)
 
 
 def make_evidence(stance: str, organization: str = "lupa", category: str = "fact_checker",
-                  relevance: float = 0.9, independent: bool = True) -> EvidenceItem:
+                  relevance: float = 0.9, independent: bool = True,
+                  entailment: float | None = None) -> EvidenceItem:
     return EvidenceItem(
         position=1, source_name=organization, organization=organization, category=category,
         retrieved_via="x", title="t", url=f"https://{organization}.org/1", excerpt="", published_at=None,
-        accessed_at=datetime.now(timezone.utc), relevance=relevance, stance=stance,
-        verdict=None, rating=None, independent=independent,
+        accessed_at=datetime.now(UTC), relevance=relevance, stance=stance,
+        verdict=None, independent=independent, entailment=entailment,
     )
 
 
@@ -72,3 +73,9 @@ def test_minimum_independent_sources_is_configurable(settings):
     two = one + [make_evidence("supports", "g1", "news_outlet")]
     assert strict.decide(one, CHECKED).classification == Classification.INCONCLUSIVE
     assert strict.decide(two, CHECKED).classification == Classification.LIKELY_TRUE
+
+
+def test_report_supported_by_model_is_decisive_despite_low_word_overlap(decision_service, settings):
+    evidence = make_evidence("supports", organization="folha", category="news_outlet",
+                             relevance=0.5, entailment=settings.nli_min_entailment)
+    assert decision_service.decide([evidence], CHECKED).classification == Classification.LIKELY_TRUE

@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from app.integrations.search_client import SearchError, SearchResult
 from app.services.evidence_search_service import SearchOutcome, SourceResults
@@ -30,6 +30,16 @@ class FakeSearchService:
         return self.outcome
 
 
+class FakeEntailmentModel:
+    """Devolve a implicação definida para cada manchete (0 quando não definida)."""
+
+    def __init__(self, scores: dict[str, float]):
+        self.scores = scores
+
+    def entailment(self, premises: list[str], hypothesis: str) -> list[float]:
+        return [self.scores.get(premise, 0.0) for premise in premises]
+
+
 def make_result(
     title: str, url: str, excerpt: str = "", published_at: date | None = date(2026, 8, 13), **extra
 ) -> SearchResult:
@@ -45,5 +55,5 @@ def make_outcome(
         results=tuple(SourceResults(sources[key], tuple(items)) for key, items in results.items()),
         sources_checked=tuple(sources[key].name for key in results),
         sources_failed=failed,
-        accessed_at=datetime(2026, 10, 6, tzinfo=timezone.utc),
+        accessed_at=datetime(2026, 10, 6, tzinfo=UTC),
     )

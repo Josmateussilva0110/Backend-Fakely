@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.news_analysis_model import Classification, NewsAnalysis, VerificationStatus
+from app.models.ordering import order_clause
 
 # Lista branca de campos ordenáveis expostos na API
 ORDERABLE_COLUMNS = {
@@ -48,13 +49,11 @@ class NewsAnalysisRepository:
 
         total = self.db.scalar(select(func.count()).select_from(NewsAnalysis).where(*conditions)) or 0
 
-        column = ORDERABLE_COLUMNS[order_by.lstrip("-")]
-        ordering = column.desc() if order_by.startswith("-") else column.asc()
         items = self.db.scalars(
             select(NewsAnalysis)
             .where(*conditions)
             .options(selectinload(NewsAnalysis.news))
-            .order_by(ordering, NewsAnalysis.id.desc())
+            .order_by(order_clause(ORDERABLE_COLUMNS, order_by), NewsAnalysis.id.desc())
             .offset(offset)
             .limit(limit)
         ).all()

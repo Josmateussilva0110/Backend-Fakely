@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, Integer, String, Text
@@ -28,7 +28,7 @@ class News(Base):
     source: Mapped[str | None] = mapped_column(String(SOURCE_MAX_LENGTH), index=True)
     published_at: Mapped[date | None] = mapped_column(Date, index=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True
     )
 
     analyses: Mapped[list[NewsAnalysis]] = relationship(

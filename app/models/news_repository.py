@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.news_model import News
+from app.models.ordering import order_clause
 
 # Lista branca de campos ordenáveis expostos na API
 ORDERABLE_COLUMNS = {
@@ -39,10 +40,12 @@ class NewsRepository:
 
         total = self.db.scalar(select(func.count()).select_from(News).where(*conditions)) or 0
 
-        column = ORDERABLE_COLUMNS[order_by.lstrip("-")]
-        ordering = column.desc() if order_by.startswith("-") else column.asc()
         items = self.db.scalars(
-            select(News).where(*conditions).order_by(ordering, News.id.desc()).offset(offset).limit(limit)
+            select(News)
+            .where(*conditions)
+            .order_by(order_clause(ORDERABLE_COLUMNS, order_by), News.id.desc())
+            .offset(offset)
+            .limit(limit)
         ).all()
         return list(items), total
 

@@ -33,11 +33,11 @@
       "default_verdict": null
     },
     {
-      "key": "google_fact_check",
-      "name": "Google Fact Check Tools",
-      "client": "google_fact_check",
-      "search_url": "https://factchecktools.googleapis.com/v1alpha1/claims:search",
-      "allowed_domains": ["factchecktools.googleapis.com"],
+      "key": "exame",
+      "name": "Exame",
+      "client": "wordpress",
+      "search_url": "https://exame.com/wp-json/wp/v2/posts/",
+      "allowed_domains": ["exame.com"],
       "default_verdict": null
     }
   ],
@@ -45,17 +45,14 @@
     "false": [
       "é falso", "falso:", "#falso", "não é verdade", "é enganoso", "enganoso:", "#enganoso",
       "boato", "é montagem", "é mentira", "é golpe", "é fake", "não há evidências",
-      "não há provas", "sem evidências", "não é real", "é falsa", "é falsa a"
+      "não há provas", "sem evidências", "não é real", "é falsa"
     ],
     "true": [
       "é verdade que", "é verdadeiro", "verdadeiro:", "#verdadeiro", "é verdadeira"
     ]
   },
-  "rating_patterns": {
-    "false": [
-      "falso", "falsa", "enganoso", "enganosa", "fake", "montagem", "boato", "mentira",
-      "não é verdade", "não é verdadeiro", "sem evidências", "false", "misleading", "pants on fire"
-    ],
-    "true": ["verdadeiro", "verdadeira", "verdade", "correto", "true", "correct"]
-  }
+  "denial_terms": [
+    "nega", "negou", "negam", "desmente", "desmentiu", "descarta", "descartou",
+    "não será", "não vai", "não é", "recusa", "recusou"
+  ]
 }

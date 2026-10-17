@@ -54,19 +54,6 @@ def _parse(url: str):
     return host
 
 
-def is_public_web_url(url: str) -> bool:
-    """Checagem sem DNS, para links devolvidos ao cliente."""
-    try:
-        host = _parse(url)
-    except UnsafeUrlError:
-        return False
-    try:
-        ipaddress.ip_address(host.strip("[]"))
-    except ValueError:
-        return True
-    return is_public_ip(host.strip("[]"))
-
-
 def ensure_public_url(url: str, resolver: Resolver = resolve_host) -> None:
     """Valida esquema, porta e se todos os IPs do domínio são públicos (antes de cada acesso)."""
     host = _parse(url)

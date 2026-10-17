@@ -1,0 +1,17 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+# E/W: estilo, F: erros (imports e variáveis sem uso), I: ordem dos imports, B: armadilhas comuns, UP: sintaxe moderna
+select = ["E", "W", "F", "I", "B", "UP"]
+ignore = [
+    "B008",   # Depends() como valor padrão é o padrão do FastAPI
+    "UP042",  # StrEnum muda o str() dos enums gravados no banco
+    "UP046",  # Generic[T] continua mais legível com Pydantic
+    "UP047",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
