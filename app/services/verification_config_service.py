@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, HttpUrl, field_validator
 from app.services.text_processing_service import normalize_text
 
 Verdict = Literal["false", "true"]
-SearchClientType = Literal["wordpress", "folha", "google_fact_check"]
+SearchClientType = Literal["wordpress", "folha"]
 
 
 class VerificationSourceConfig(BaseModel):
@@ -43,8 +43,13 @@ class VerificationConfig(BaseModel):
     sources: tuple[VerificationSourceConfig, ...]
     # Frases de veredito no título/resumo das checagens ("é falso que...")
     verdict_patterns: VerdictPatterns
-    # Classificações curtas das APIs de checagem ("Falso", "Enganoso")
-    rating_patterns: VerdictPatterns
+    # Termos que, no título de uma reportagem, indicam desmentido ("clube nega que...")
+    denial_terms: frozenset[str]
+
+    @field_validator("denial_terms", mode="before")
+    @classmethod
+    def normalize_denial_terms(cls, values: list[str]) -> frozenset[str]:
+        return frozenset(normalize_text(v) for v in values)
 
 
 @lru_cache(maxsize=4)

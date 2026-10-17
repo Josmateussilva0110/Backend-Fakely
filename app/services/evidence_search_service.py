@@ -1,25 +1,22 @@
 """Pesquisa a afirmação nos provedores de busca e checagem, em paralelo."""
 
 import logging
-import re
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
 from app.core.config import Settings
 from app.integrations.folha_search_client import FolhaSearchClient
-from app.integrations.google_fact_check_client import GoogleFactCheckClient
 from app.integrations.search_client import HttpFetcher, SearchClient, SearchError, SearchResult
 from app.integrations.wordpress_search_client import WordpressSearchClient
-from app.services.text_processing_service import normalize_text
+from app.services.text_processing_service import WORD_PATTERN, normalize_text, tokenize
 from app.services.verification_config_service import VerificationConfig, VerificationSourceConfig
 
 logger = logging.getLogger(__name__)
 
 MIN_KEYWORD_LENGTH = 4
-_WORD_PATTERN = re.compile(r"\w+(?:[-']\w+)*")
 
 
 @dataclass(frozen=True)
@@ -55,28 +52,15 @@ class EvidenceSearchService:
         cls, settings: Settings, config: VerificationConfig, stopwords: frozenset[str], http_client: httpx.Client
     ) -> "EvidenceSearchService":
         fetcher = HttpFetcher(http_client, settings.verification_max_response_bytes)
-        providers = []
-        for source in config.sources:
-            client = cls._build_client(settings, source, fetcher)
-            if client is not None:
-                providers.append(SearchProvider(source, client))
+        providers = [SearchProvider(source, cls._build_client(source, fetcher)) for source in config.sources]
         return cls(settings, stopwords, providers)
 
     @staticmethod
-    def _build_client(
-        settings: Settings, source: VerificationSourceConfig, fetcher: HttpFetcher
-    ) -> SearchClient | None:
+    def _build_client(source: VerificationSourceConfig, fetcher: HttpFetcher) -> SearchClient:
         url, domains = str(source.search_url), source.allowed_domains
         if source.client == "wordpress":
             return WordpressSearchClient(fetcher, url, domains)
-        if source.client == "folha":
-            return FolhaSearchClient(fetcher, url, domains)
-        # Google Fact Check só é usado quando há chave configurada
-        if settings.google_fact_check_api_key is None:
-            return None
-        return GoogleFactCheckClient(
-            fetcher, url, domains, settings.google_fact_check_api_key, settings.google_fact_check_language_code
-        )
+        return FolhaSearchClient(fetcher, url, domains)
 
     @property
     def provider_names(self) -> tuple[str, ...]:
@@ -115,7 +99,7 @@ class EvidenceSearchService:
             results=tuple(results),
             sources_checked=tuple(checked),
             sources_failed=tuple(failed),
-            accessed_at=datetime.now(timezone.utc),
+            accessed_at=datetime.now(UTC),
         )
 
     def extract_keywords(self, claim: str, title: str | None = None) -> list[str]:
@@ -126,7 +110,7 @@ class EvidenceSearchService:
         """
         candidates: dict[str, bool] = {}
         for chunk in (claim, title):
-            for word in _WORD_PATTERN.findall(chunk or ""):
+            for word in WORD_PATTERN.findall(chunk or ""):
                 token = normalize_text(word)
                 if (
                     len(token) < MIN_KEYWORD_LENGTH or token.isdigit()
@@ -143,8 +127,17 @@ class EvidenceSearchService:
     def _search_provider(self, provider: SearchProvider, keywords: list[str]) -> list[SearchResult]:
         limit = self.settings.verification_max_results
         results = provider.client.search(" ".join(keywords), limit)
-        # Buscas que exigem todas as palavras: tenta de novo com as mais específicas
-        fallback_size = self.settings.verification_min_keywords
-        if not results and len(keywords) > fallback_size:
-            results = provider.client.search(" ".join(keywords[:fallback_size]), limit)
+        # A busca com todas as palavras pode não trazer nada ou trazer só outro assunto
+        # (ex.: um ato em Curitiba para "rafael camara contratado formula", que só cita os
+        # nomes no resumo): tenta de novo com as palavras mais específicas e junta os resultados
+        specific = keywords[: self.settings.verification_min_keywords]
+        if len(keywords) > len(specific) and not any(mentions_all(r, specific) for r in results):
+            known = {r.url for r in results}
+            results += [r for r in provider.client.search(" ".join(specific), limit) if r.url not in known]
         return results
+
+
+def mentions_all(result: SearchResult, keywords: list[str]) -> bool:
+    # Só o título: o resumo costuma citar nomes de passagem
+    tokens = set(tokenize(normalize_text(result.title)))
+    return all(keyword in tokens for keyword in keywords)

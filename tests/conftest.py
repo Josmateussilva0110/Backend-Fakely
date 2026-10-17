@@ -10,6 +10,8 @@ os.environ.update({
     # Testes nunca acessam a internet; a verificação usa clientes falsos
     "VERIFICATION_ENABLED": "false",
     "PAGE_FETCH_ENABLED": "false",
+    # O modelo NLI real não é carregado; os testes usam um modelo falso
+    "NLI_ENABLED": "false",
 })
 
 import pytest  # noqa: E402

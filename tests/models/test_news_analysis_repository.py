@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.models.evidence_model import Evidence
 from app.models.news_analysis_model import Classification, NewsAnalysis, VerificationStatus
@@ -14,7 +14,7 @@ def make_analysis(news: News, classification: Classification, evidences: int = 0
         evidences=[
             Evidence(position=i, source_name="Lupa", organization="lupa", category="fact_checker",
                      retrieved_via="Lupa", title="t", url=f"https://lupa.org/{i}", excerpt="",
-                     accessed_at=datetime.now(timezone.utc), relevance=0.9, stance="contradicts",
+                     accessed_at=datetime.now(UTC), relevance=0.9, stance="contradicts",
                      independent=True)
             for i in range(evidences, 0, -1)
         ],

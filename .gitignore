@@ -30,6 +30,7 @@ coverage.xml
 .nox/
 
 # --- Machine learning (modelos treinados e datasets) ---
+/.models/
 *.joblib
 *.pkl
 *.pickle

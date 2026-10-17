@@ -30,7 +30,7 @@ def test_trusted_site_alone_does_not_make_it_true(make_verification_service, ver
     assert any("não confirma a afirmação" in item for item in report.limitations)
 
 
-def test_fact_check_contradiction_is_likely_false(make_verification_service, verification_config):
+def test_fact_check_contradiction_is_likely_false(make_verification_service, verification_config, settings):
     service = make_verification_service(FakeSearchService(make_outcome(verification_config, {"lupa": [LUPA_FALSE]})))
     report = service.verify(TEXT, title=TITLE)
     assert report.classification == Classification.LIKELY_FALSE
@@ -39,7 +39,7 @@ def test_fact_check_contradiction_is_likely_false(make_verification_service, ver
     assert "Agência Lupa" in report.justification
     assert report.evidences[0].url == LUPA_FALSE.url
     assert report.method == "evidence_rules"
-    assert report.model_version == "evidence-rules-1"
+    assert report.model_version == settings.analysis_version
 
 
 def test_news_outlet_report_is_likely_true(make_verification_service, verification_config):

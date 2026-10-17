@@ -36,8 +36,14 @@ class DecisionService:
             evidence.independent
             and evidence.category != "unknown"
             and evidence.stance != "neutral"
-            and evidence.relevance >= self.settings.decision_min_relevance
+            and self.is_strong(evidence)
         )
+
+    def is_strong(self, evidence: EvidenceItem) -> bool:
+        # Reportagem avaliada pelo modelo: a posição "sustenta" já exigiu a implicação mínima
+        if evidence.verdict is None and evidence.entailment is not None:
+            return evidence.entailment >= self.settings.nli_min_entailment
+        return evidence.relevance >= self.settings.decision_min_relevance
 
     def decide(self, evidences: list[EvidenceItem], sources_checked: tuple[str, ...]) -> Decision:
         # Sem nenhuma fonte consultada não há como verificar; nunca se presume falsidade

@@ -1,5 +1,3 @@
-import math
-
 from app.core.exceptions import NotFoundError
 from app.models.news_model import News
 from app.models.news_repository import NewsRepository
@@ -11,8 +9,8 @@ class NewsService:
     def __init__(self, repository: NewsRepository):
         self.repository = repository
 
-    def list(self, filters: NewsFilters) -> tuple[list[News], int, int]:
-        items, total = self.repository.find_page(
+    def list(self, filters: NewsFilters) -> tuple[list[News], int]:
+        return self.repository.find_page(
             offset=filters.offset,
             limit=filters.page_size,
             order_by=filters.order_by,
@@ -20,8 +18,6 @@ class NewsService:
             created_from=filters.created_from,
             created_to=filters.created_to,
         )
-        pages = math.ceil(total / filters.page_size) if total else 0
-        return items, total, pages
 
     def get_by_id(self, news_id: int) -> News:
         news = self.repository.find_by_id(news_id)

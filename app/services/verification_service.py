@@ -1,19 +1,19 @@
 """Pipeline: afirmação → busca → evidências → decisão → relatório (com cache)."""
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.cache import ThreadSafeTTLCache, build_cache_key
 from app.core.config import Settings
 from app.models.news_analysis_model import Classification, VerificationStatus
 from app.services.analysis_rules_service import AnalysisRules
 from app.services.claim_extraction_service import ClaimExtractionService
-from app.services.decision_service import Decision, DecisionService
+from app.services.decision_service import Decision, DecisionReason, DecisionService
 from app.services.evidence_search_service import EvidenceSearchService, SearchOutcome
 from app.services.evidence_service import EvidenceItem, EvidenceService
 from app.services.report_service import ReportService
 from app.services.source_registry_service import SourceAssessment, SourceRegistry
-from app.services.text_processing_service import describe_style_signals, extract_features, preprocess_text
+from app.services.text_processing_service import describe_style_signals, extract_features
 
 METHOD_EVIDENCE_RULES = "evidence_rules"
 VERIFICATION_DISABLED_NOTICE = "A busca de evidências está desativada neste ambiente."
@@ -50,9 +50,7 @@ class VerificationService:
         self.registry = registry
         self.search_service = search_service
         self.evidence_service = evidence_service
-        self.claim_service = ClaimExtractionService(
-            rules, settings.min_words, max_candidates=1, max_length=settings.claim_max_length
-        )
+        self.claim_service = ClaimExtractionService(rules, settings.min_words, settings.claim_max_length)
         self.decision_service = DecisionService(settings)
         self.report_service = ReportService(settings)
         # Mesmo conteúdo gera a mesma análise; evita repetir buscas externas
@@ -61,6 +59,10 @@ class VerificationService:
     @property
     def search_enabled(self) -> bool:
         return self.search_service is not None and self.evidence_service is not None
+
+    @property
+    def entailment_enabled(self) -> bool:
+        return self.evidence_service is not None and self.evidence_service.entailment_model is not None
 
     def verify(
         self,
@@ -85,32 +87,28 @@ class VerificationService:
     def _run(self, text: str, title: str | None, url: str | None, source: str | None) -> VerificationReport:
         style_indicators = self.detect_style(text, title)
         assessment = self.registry.assess(url, source)
-        claim = self.claim_service.extract(text, title).main_claim
 
-        outcome: SearchOutcome | None = None
-        if claim and self.search_enabled:
-            outcome = self.search_service.search(claim, title)
-
-        if claim is None or (self.search_enabled and outcome is None):
-            decision = Decision(Classification.INCONCLUSIVE, "insufficient_text")
-            return self._build(claim, decision, [], outcome, style_indicators, assessment, VerificationStatus.SKIPPED)
-        if outcome is None:
-            decision = Decision(Classification.INCONCLUSIVE, "verification_unavailable")
+        def skipped(claim: str | None, reason: DecisionReason) -> VerificationReport:
+            decision = Decision(Classification.INCONCLUSIVE, reason)
             return self._build(claim, decision, [], None, style_indicators, assessment, VerificationStatus.SKIPPED)
+
+        claim = self.claim_service.extract(text, title)
+        if claim is None:
+            return skipped(None, "insufficient_text")
+        if not self.search_enabled:
+            return skipped(claim, "verification_unavailable")
+        outcome = self.search_service.search(claim, title)
+        # Sem palavras-chave suficientes não há busca possível
+        if outcome is None:
+            return skipped(claim, "insufficient_text")
 
         evidences = self.evidence_service.build_evidences(outcome, claim, title)
         decision = self.decision_service.decide(evidences, outcome.sources_checked)
-        if not outcome.sources_checked:
-            status = VerificationStatus.FAILED
-        elif outcome.sources_failed:
-            status = VerificationStatus.PARTIAL
-        else:
-            status = VerificationStatus.COMPLETE
-        return self._build(claim, decision, evidences, outcome, style_indicators, assessment, status)
+        return self._build(claim, decision, evidences, outcome, style_indicators, assessment, search_status(outcome))
 
     def detect_style(self, text: str, title: str | None) -> list[str]:
         """Sinais de estilo: alertas exibidos ao usuário, sem peso na decisão."""
-        features = extract_features(preprocess_text(text, self.rules.stopwords), self.rules, title=title)
+        features = extract_features(text, self.rules, title=title)
         return describe_style_signals(features, self.rules)
 
     def _build(
@@ -126,7 +124,7 @@ class VerificationService:
         checked = outcome.sources_checked if outcome else ()
         failed = outcome.sources_failed if outcome else ()
         report = self.report_service.build(
-            decision, evidences, checked, failed, assessment, datetime.now(timezone.utc).date()
+            decision, evidences, checked, failed, assessment, datetime.now(UTC).date()
         )
         limitations = list(report.limitations)
         if not self.search_enabled:
@@ -146,3 +144,11 @@ class VerificationService:
             method=METHOD_EVIDENCE_RULES,
             model_version=self.settings.analysis_version,
         )
+
+
+def search_status(outcome: SearchOutcome) -> VerificationStatus:
+    if not outcome.sources_checked:
+        return VerificationStatus.FAILED
+    if outcome.sources_failed:
+        return VerificationStatus.PARTIAL
+    return VerificationStatus.COMPLETE

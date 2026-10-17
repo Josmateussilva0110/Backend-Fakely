@@ -5,6 +5,7 @@
 !.env.example
 **/__pycache__
 .pytest_cache
+.models
 tests
 tools
 docs

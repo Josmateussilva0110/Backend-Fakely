@@ -1,8 +1,8 @@
 """Busca via API REST pública do WordPress (/wp-json/wp/v2/posts)."""
 
 import json
-from datetime import date, datetime
 
+from app.core.parsing import parse_iso_date
 from app.integrations.search_client import HttpFetcher, SearchError, SearchResult, html_to_text, is_allowed_url
 
 
@@ -43,13 +43,4 @@ class WordpressSearchClient:
             return None
         if not title or not is_allowed_url(url, self.allowed_domains):
             return None
-        return SearchResult(title=title, url=url, excerpt=excerpt, published_at=_parse_date(post.get("date")))
-
-
-def _parse_date(value: str | None) -> date | None:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value).date()
-    except ValueError:
-        return None
+        return SearchResult(title=title, url=url, excerpt=excerpt, published_at=parse_iso_date(post.get("date")))

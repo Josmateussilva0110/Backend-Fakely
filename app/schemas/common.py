@@ -1,3 +1,5 @@
+import math
+from datetime import datetime
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,10 +32,25 @@ class PaginationParams(BaseModel):
         return (self.page - 1) * self.page_size
 
 
+def build_page(schema: type[T], items: list, total: int, params: PaginationParams) -> Page[T]:
+    return Page[schema](
+        items=[schema.model_validate(item) for item in items],
+        total=total,
+        page=params.page,
+        page_size=params.page_size,
+        pages=math.ceil(total / params.page_size),
+    )
+
+
 def validate_order_by(value: str, allowed: dict) -> str:
     if value.lstrip("-") not in allowed:
         raise ValueError(f"Ordenação inválida. Use um destes campos: {', '.join(sorted(allowed))}.")
     return value
+
+
+def validate_date_range(start: datetime | None, end: datetime | None, start_name: str, end_name: str) -> None:
+    if start and end and start > end:
+        raise ValueError(f"{start_name} deve ser anterior a {end_name}.")
 
 
 class ErrorItem(BaseModel):

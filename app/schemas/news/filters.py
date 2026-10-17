@@ -4,7 +4,7 @@ from pydantic import Field, field_validator, model_validator
 
 from app.models.news_model import SOURCE_MAX_LENGTH
 from app.models.news_repository import ORDERABLE_COLUMNS
-from app.schemas.common import PaginationParams, validate_order_by
+from app.schemas.common import PaginationParams, validate_date_range, validate_order_by
 
 
 class NewsFilters(PaginationParams):
@@ -20,6 +20,5 @@ class NewsFilters(PaginationParams):
 
     @model_validator(mode="after")
     def date_range_valid(self) -> "NewsFilters":
-        if self.created_from and self.created_to and self.created_from > self.created_to:
-            raise ValueError("created_from deve ser anterior a created_to.")
+        validate_date_range(self.created_from, self.created_to, "created_from", "created_to")
         return self

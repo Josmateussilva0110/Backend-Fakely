@@ -1,4 +1,3 @@
-import math
 from dataclasses import asdict
 from datetime import date
 
@@ -47,10 +46,10 @@ class NewsAnalysisService:
             raise NotFoundError("Análise não encontrada.")
         return analysis
 
-    def list(self, filters: NewsAnalysisFilters, news_id: int | None = None) -> tuple[list[NewsAnalysis], int, int]:
+    def list(self, filters: NewsAnalysisFilters, news_id: int | None = None) -> tuple[list[NewsAnalysis], int]:
         if news_id is not None and self.news_repository.find_by_id(news_id) is None:
             raise NotFoundError("Notícia não encontrada.")
-        items, total = self.repository.find_page(
+        return self.repository.find_page(
             offset=filters.offset,
             limit=filters.page_size,
             order_by=filters.order_by,
@@ -60,8 +59,6 @@ class NewsAnalysisService:
             analyzed_from=filters.analyzed_from,
             analyzed_to=filters.analyzed_to,
         )
-        pages = math.ceil(total / filters.page_size) if total else 0
-        return items, total, pages
 
     def _build_news(self, data: NewsAnalysisCreate) -> News:
         url = str(data.url) if data.url else None
@@ -115,8 +112,8 @@ def to_evidence(item: EvidenceItem) -> Evidence:
         published_at=item.published_at,
         accessed_at=item.accessed_at,
         relevance=item.relevance,
+        entailment=item.entailment,
         stance=item.stance,
         verdict=item.verdict,
-        rating=item.rating,
         independent=item.independent,
     )

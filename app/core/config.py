@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", extra="ignore")
 
     app_name: str = "Fake News Detection API"
+    app_version: str = "2.0.0"
     environment: Literal["development", "test", "production"] = "development"
     api_prefix: str = "/api/v1"
     # 127.0.0.1 por padrão: só aceita conexões da própria máquina
@@ -34,24 +35,23 @@ class Settings(BaseSettings):
     analysis_rules_path: Path = BASE_DIR / "app" / "data" / "analysis_rules.json"
     source_registry_path: Path = BASE_DIR / "app" / "data" / "source_registry.json"
     # Identifica a versão das regras de decisão gravada em cada análise (auditoria)
-    analysis_version: str = "evidence-rules-1"
+    analysis_version: str = "evidence-rules-2"
     max_text_length: int = 100_000
     # Abaixo deste número de palavras não há afirmação verificável (RN07)
     min_words: int = 5
     claim_max_length: int = 500
 
-    # Busca de evidências (Lupa, Folha, CNN Brasil, Veja e, com chave, Google Fact Check)
+    # Busca de evidências (provedores em app/data/verification_sources.json)
     verification_enabled: bool = True
     verification_sources_path: Path = BASE_DIR / "app" / "data" / "verification_sources.json"
     verification_user_agent: str = "FakeNewsDetectionMVP/1.0 (projeto academico)"
     verification_timeout_seconds: float = 5.0
+    verification_max_redirects: int = 3
     verification_total_timeout_seconds: float = 12.0
     verification_max_response_bytes: int = 2_000_000
     verification_max_results: int = 5
     verification_max_keywords: int = 4
     verification_min_keywords: int = 2
-    google_fact_check_api_key: SecretStr | None = None
-    google_fact_check_language_code: str = "pt-BR"
 
     # Evidências: relevância mínima para listar e para pesar na decisão
     evidence_min_relevance: float = 0.5
@@ -62,6 +62,16 @@ class Settings(BaseSettings):
     # Suficiência: fontes independentes necessárias para concluir
     decision_min_supporting_sources: int = 1
     decision_min_contradicting_sources: int = 1
+
+    # Inferência textual (NLI): decide quando uma reportagem sustenta a afirmação.
+    # Desligado, volta a valer só a semelhança de palavras (decision_min_relevance)
+    nli_enabled: bool = True
+    nli_model_repo: str = "MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7"
+    nli_model_revision: str = "b5113eb38ab63efdd7f280f8c144ea8b13f978ce"
+    nli_model_file: str = "onnx/model.onnx"
+    nli_cache_dir: Path = BASE_DIR / ".models"
+    nli_max_tokens: int = 256
+    nli_min_entailment: float = 0.6
 
     # Leitura da página quando o usuário envia só a URL (com proteção contra SSRF)
     page_fetch_enabled: bool = True

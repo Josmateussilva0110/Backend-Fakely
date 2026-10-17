@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import httpx
 
+from app.integrations.http_utils import ResponseTooLargeError, read_limited
 from app.integrations.url_safety import Resolver, UnsafeUrlError, ensure_public_url, resolve_host
 
 HTML_CONTENT_TYPES = ("text/html", "application/xhtml+xml")
@@ -71,10 +72,7 @@ class WebPageClient:
         content_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
         if content_type not in HTML_CONTENT_TYPES:
             raise WebPageError("O conteúdo não é uma página HTML")
-        chunks, size = [], 0
-        for chunk in response.iter_bytes():
-            size += len(chunk)
-            if size > self.max_bytes:
-                raise WebPageError("Página maior que o limite permitido")
-            chunks.append(chunk)
-        return b"".join(chunks).decode(response.encoding or "utf-8", errors="replace")
+        try:
+            return read_limited(response, self.max_bytes)
+        except ResponseTooLargeError as exc:
+            raise WebPageError("Página maior que o limite permitido") from exc

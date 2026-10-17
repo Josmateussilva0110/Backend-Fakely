@@ -2,11 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 
-from app.controllers.news_analysis_controller import to_page
 from app.core.config import get_settings
 from app.core.dependencies import get_news_analysis_service, get_news_service
 from app.core.security import limiter, require_admin_key
-from app.schemas.common import ErrorResponse, Page
+from app.schemas.common import ErrorResponse, Page, build_page
 from app.schemas.news.filters import NewsFilters
 from app.schemas.news.response import NewsResponse, NewsSummaryResponse
 from app.schemas.news.update import NewsUpdate
@@ -27,14 +26,7 @@ def list_news(
     filters: Annotated[NewsFilters, Query()],
     service: NewsService = Depends(get_news_service),
 ):
-    items, total, pages = service.list(filters)
-    return Page[NewsSummaryResponse](
-        items=[NewsSummaryResponse.model_validate(item) for item in items],
-        total=total,
-        page=filters.page,
-        page_size=filters.page_size,
-        pages=pages,
-    )
+    return build_page(NewsSummaryResponse, *service.list(filters), filters)
 
 
 @router.get("/{news_id}", response_model=NewsResponse, responses={404: {"model": ErrorResponse}})
@@ -72,7 +64,7 @@ def list_news_analyses_of_news(
     filters: Annotated[NewsAnalysisFilters, Query()],
     service: NewsAnalysisService = Depends(get_news_analysis_service),
 ):
-    return to_page(*service.list(filters, news_id=news_id), filters)
+    return build_page(NewsAnalysisSummaryResponse, *service.list(filters, news_id=news_id), filters)
 
 
 @router.post(

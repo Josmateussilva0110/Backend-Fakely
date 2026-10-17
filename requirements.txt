@@ -9,4 +9,7 @@ cachetools==7.2.0
 slowapi==0.1.10
 httpx==0.28.1
 beautifulsoup4==4.15.0
-pytest==9.1.1
+onnxruntime==1.31.0
+tokenizers==0.23.3
+huggingface_hub==1.33.0
+numpy==2.5.4

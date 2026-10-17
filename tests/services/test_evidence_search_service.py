@@ -1,5 +1,3 @@
-from pydantic import SecretStr
-
 from app.services.evidence_search_service import EvidenceSearchService, SearchProvider
 from tests.fakes import FakeSearchClient, make_result
 
@@ -14,19 +12,7 @@ def build_service(settings, config, rules, clients: dict) -> EvidenceSearchServi
 
 def test_config_lists_search_providers(verification_config):
     keys = [s.key for s in verification_config.sources]
-    assert keys == ["lupa", "folha", "cnn_brasil", "veja", "google_fact_check"]
-
-
-def test_google_fact_check_is_only_enabled_with_api_key(settings, verification_config, rules):
-    import httpx
-
-    with httpx.Client() as http:
-        without_key = EvidenceSearchService.build(settings, verification_config, rules.stopwords, http)
-        assert "Google Fact Check Tools" not in without_key.provider_names
-        with_key = settings.model_copy(update={"google_fact_check_api_key": SecretStr("k")})
-        assert "Google Fact Check Tools" in EvidenceSearchService.build(
-            with_key, verification_config, rules.stopwords, http
-        ).provider_names
+    assert keys == ["lupa", "folha", "cnn_brasil", "veja", "exame"]
 
 
 def test_extract_keywords_prefers_specific_words(settings, verification_config, rules):
@@ -72,3 +58,20 @@ def test_text_without_keywords_skips_search(settings, verification_config, rules
     lupa = FakeSearchClient([])
     assert build_service(settings, verification_config, rules, {"lupa": lupa}).search("de o a e", None) is None
     assert lupa.queries == []
+
+
+def test_retries_with_specific_keywords_when_results_are_off_topic(settings, verification_config, rules):
+    folha = FakeSearchClient([make_result("Sob chuva, ato contra Temer em Curitiba reúne 250 pessoas",
+                                          "https://www1.folha.uol.com.br/poder/ato.shtml")])
+    outcome = build_service(settings, verification_config, rules, {"folha": folha}).search(USER_CLAIM, USER_TITLE)
+    assert len(folha.queries) == 2
+    # A página repetida na segunda busca não é duplicada
+    assert len(outcome.results[0].results) == 1
+
+
+def test_does_not_retry_when_results_mention_specific_keywords(settings, verification_config, rules):
+    service = build_service(settings, verification_config, rules, {})
+    specific = service.extract_keywords(USER_CLAIM, USER_TITLE)[: settings.verification_min_keywords]
+    folha = FakeSearchClient([make_result(" ".join(specific).title(), "https://www1.folha.uol.com.br/a.shtml")])
+    build_service(settings, verification_config, rules, {"folha": folha}).search(USER_CLAIM, USER_TITLE)
+    assert len(folha.queries) == 1

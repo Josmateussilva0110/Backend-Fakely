@@ -1,4 +1,4 @@
-"""Cadastro de fontes: domínio, categoria e área de atuação (avaliação das fontes)."""
+"""Cadastro de fontes: domínio e categoria (avaliação das fontes)."""
 
 import json
 from dataclasses import dataclass
@@ -25,7 +25,6 @@ class RegisteredSource(BaseModel):
     key: str
     name: str
     category: SourceCategory
-    areas: tuple[str, ...] = ()
     # Domínio, ou domínio + caminho para seções (ex.: "g1.globo.com/fato-ou-fake")
     domains: tuple[str, ...]
 
