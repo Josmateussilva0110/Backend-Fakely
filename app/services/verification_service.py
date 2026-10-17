@@ -60,6 +60,10 @@ class VerificationService:
     def search_enabled(self) -> bool:
         return self.search_service is not None and self.evidence_service is not None
 
+    @property
+    def entailment_enabled(self) -> bool:
+        return self.evidence_service is not None and self.evidence_service.entailment_model is not None
+
     def verify(
         self,
         text: str,

@@ -13,8 +13,9 @@ COPY app ./app
 COPY migrations ./migrations
 COPY alembic.ini .
 
-# Executa sem privilégios de root
-RUN useradd --create-home --uid 1000 appuser
+# Executa sem privilégios de root; .models guarda o modelo NLI (volume no compose)
+RUN useradd --create-home --uid 1000 appuser \
+    && mkdir -p /app/.models && chown appuser /app/.models
 USER appuser
 
 EXPOSE 8000

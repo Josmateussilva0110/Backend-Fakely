@@ -11,7 +11,7 @@ from app.core.config import Settings
 from app.integrations.folha_search_client import FolhaSearchClient
 from app.integrations.search_client import HttpFetcher, SearchClient, SearchError, SearchResult
 from app.integrations.wordpress_search_client import WordpressSearchClient
-from app.services.text_processing_service import WORD_PATTERN, normalize_text
+from app.services.text_processing_service import WORD_PATTERN, normalize_text, tokenize
 from app.services.verification_config_service import VerificationConfig, VerificationSourceConfig
 
 logger = logging.getLogger(__name__)
@@ -127,8 +127,17 @@ class EvidenceSearchService:
     def _search_provider(self, provider: SearchProvider, keywords: list[str]) -> list[SearchResult]:
         limit = self.settings.verification_max_results
         results = provider.client.search(" ".join(keywords), limit)
-        # Buscas que exigem todas as palavras: tenta de novo com as mais específicas
-        fallback_size = self.settings.verification_min_keywords
-        if not results and len(keywords) > fallback_size:
-            results = provider.client.search(" ".join(keywords[:fallback_size]), limit)
+        # A busca com todas as palavras pode não trazer nada ou trazer só outro assunto
+        # (ex.: um ato em Curitiba para "rafael camara contratado formula", que só cita os
+        # nomes no resumo): tenta de novo com as palavras mais específicas e junta os resultados
+        specific = keywords[: self.settings.verification_min_keywords]
+        if len(keywords) > len(specific) and not any(mentions_all(r, specific) for r in results):
+            known = {r.url for r in results}
+            results += [r for r in provider.client.search(" ".join(specific), limit) if r.url not in known]
         return results
+
+
+def mentions_all(result: SearchResult, keywords: list[str]) -> bool:
+    # Só o título: o resumo costuma citar nomes de passagem
+    tokens = set(tokenize(normalize_text(result.title)))
+    return all(keyword in tokens for keyword in keywords)

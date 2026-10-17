@@ -80,6 +80,8 @@ Tabelas: `news` (notícias), `news_analyses` (resultados) e `evidences` (fontes 
 python -m app
 ```
 
+Na **primeira execução**, a API baixa o modelo de inferência textual (~1,1 GB) para a pasta `.models/`. Depois disso, ele só é carregado do disco (alguns segundos). Para rodar sem o modelo, defina `NLI_ENABLED=false` no `.env`.
+
 - API: http://localhost:8000/api/v1
 - Documentação: http://localhost:8000/docs
 - Status: http://localhost:8000/health
@@ -118,6 +120,7 @@ Crie o `.env` a partir do `.env.example` e ajuste:
 | `CORS_ORIGINS` | Só o domínio real do front, ex.: `["https://meusite.com.br"]` |
 | `POSTGRES_PASSWORD` | Senha forte, diferente da de desenvolvimento (e igual à de `DATABASE_URL`) |
 | `ADMIN_API_KEY` | Chave nova, gerada com o comando do passo 2 de desenvolvimento |
+| `NLI_ENABLED` | `true` (exige ~1,5 GB de RAM livre para o modelo) |
 
 Nunca versione o `.env` (ele já está no `.gitignore`).
 
@@ -129,6 +132,7 @@ docker compose --profile api up -d --build
 
 - A imagem instala só o `requirements.txt` (sem `pytest` e `ruff`) e roda sem usuário root.
 - Ao iniciar, o container aplica as migrações (`alembic upgrade head`) e depois sobe a API.
+- O modelo NLI é baixado na primeira inicialização e fica no volume `models`; os próximos builds não baixam de novo.
 - A API fica em `127.0.0.1:8000`, acessível só pela própria máquina. Para publicar, coloque um proxy reverso com HTTPS (Nginx, Caddy) na frente.
 
 Para atualizar depois de um `git pull`, rode o mesmo comando: ele reconstrói a imagem e aplica as migrações novas.
@@ -171,6 +175,8 @@ Os erros seguem o formato `{"detail": "...", "errors": [{"field": "...", "messag
 
 - **Fontes consultadas:** Agência Lupa, Folha de S.Paulo, CNN Brasil e Veja.
 - **O que conta:** só evidências relevantes, de fontes cadastradas em `app/data/source_registry.json` e independentes entre si.
+- **Quando uma reportagem sustenta:** um modelo local de inferência textual ([mDeBERTa multilíngue](https://huggingface.co/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7), licença MIT) estima se a manchete implica a afirmação, mesmo com outras palavras ("anunciado como piloto da Haas na F1" × "contratado para a Fórmula 1"). A manchete também precisa citar os nomes próprios da afirmação, e não pode desmentir o fato ("nega", "descarta").
+- **Quando contradiz:** só pelo veredito das agências de checagem ("é falso que..."). O modelo nunca conclui que algo é falso.
 - **O que não decide:** o estilo do texto só gera alertas. Estar em um site conhecido não torna a notícia verdadeira.
 
 ## Problemas comuns
@@ -184,3 +190,4 @@ Os erros seguem o formato `{"detail": "...", "errors": [{"field": "...", "messag
 | `relation ... does not exist` | `alembic upgrade head` |
 | Erro de CORS no front | Adicione a origem em `CORS_ORIGINS` e reinicie a API |
 | 429 | Limite de análises por minuto (`RATE_LIMIT_CREATE`) |
+| `Não foi possível carregar o modelo NLI` no log | Sem internet na primeira execução ou pouca RAM. A API continua funcionando, só com a comparação por palavras |

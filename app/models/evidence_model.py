@@ -30,6 +30,7 @@ class Evidence(Base):
     published_at: Mapped[date | None] = mapped_column(Date)
     accessed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     relevance: Mapped[float] = mapped_column(Float, nullable=False)
+    entailment: Mapped[float | None] = mapped_column(Float)
     stance: Mapped[str] = mapped_column(String(20), nullable=False)
     verdict: Mapped[str | None] = mapped_column(String(10))
     independent: Mapped[bool] = mapped_column(Boolean, nullable=False)

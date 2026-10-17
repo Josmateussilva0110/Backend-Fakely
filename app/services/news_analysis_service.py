@@ -112,6 +112,7 @@ def to_evidence(item: EvidenceItem) -> Evidence:
         published_at=item.published_at,
         accessed_at=item.accessed_at,
         relevance=item.relevance,
+        entailment=item.entailment,
         stance=item.stance,
         verdict=item.verdict,
         independent=item.independent,

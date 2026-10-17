@@ -1,6 +1,7 @@
 from datetime import date
 
-from tests.fakes import make_outcome, make_result
+from app.services.evidence_service import EvidenceService
+from tests.fakes import FakeEntailmentModel, make_outcome, make_result
 
 CLAIM = "Ivermectina tem 70% de eficácia contra a Covid, diz estudo"
 
@@ -123,3 +124,70 @@ def test_short_claim_inside_unrelated_headline_does_not_support(evidence_service
                               "https://www1.folha.uol.com.br/poder/visita.shtml")],
     })
     assert all(e.stance != "supports" for e in evidences)
+
+
+CAMARA_CLAIM = "Rafael Câmara contratado para formula 1 em 2027"
+CAMARA_HEADLINE = "Brasileiro Rafael Câmara é anunciado como piloto da Haas na F1 em 2027"
+
+
+def with_model(settings, verification_config, registry, rules, scores):
+    return EvidenceService(settings, verification_config, registry, rules.stopwords,
+                           entailment_model=FakeEntailmentModel(scores))
+
+
+def test_model_supports_paraphrased_headline(settings, verification_config, registry, rules):
+    service = with_model(settings, verification_config, registry, rules, {CAMARA_HEADLINE: 0.79})
+    evidences = build_for(service, verification_config, CAMARA_CLAIM, {
+        "folha": [make_result(CAMARA_HEADLINE, "https://www1.folha.uol.com.br/esporte/camara.shtml")],
+    })
+    assert evidences[0].stance == "supports"
+    assert evidences[0].entailment == 0.79
+    # Sem o modelo, as palavras diferentes ("anunciado", "F1") não bastam para sustentar
+    without_model = build_for(evidence_service_without_model(settings, verification_config, registry, rules),
+                              verification_config, CAMARA_CLAIM,
+                              {"folha": [make_result(CAMARA_HEADLINE, "https://www1.folha.uol.com.br/esporte/c.shtml")]})
+    assert [e.stance for e in without_model] == ["neutral"]
+
+
+def test_model_overrides_word_overlap_for_support(settings, verification_config, registry, rules):
+    # Mesmas palavras, outro fato: o modelo não vê implicação
+    headline = "Corinthians anuncia Clarence Seedorf como novo técnico"
+    service = with_model(settings, verification_config, registry, rules, {headline: 0.05})
+    evidences = build_for(service, verification_config, SEEDORF_CLAIM, {
+        "folha": [make_result(headline, "https://www1.folha.uol.com.br/esporte/seedorf.shtml")],
+    })
+    assert evidences[0].stance == "neutral"
+
+
+def test_denial_blocks_support_even_with_model(settings, verification_config, registry, rules):
+    headline = "Corinthians nega que Seedorf seja o novo técnico"
+    service = with_model(settings, verification_config, registry, rules, {headline: 0.9})
+    evidences = build_for(service, verification_config, SEEDORF_CLAIM, {
+        "folha": [make_result(headline, "https://www1.folha.uol.com.br/esporte/nega.shtml")],
+    })
+    assert evidences[0].stance == "neutral"
+
+
+def evidence_service_without_model(settings, verification_config, registry, rules):
+    return EvidenceService(settings, verification_config, registry, rules.stopwords)
+
+
+def test_model_needs_the_claim_proper_nouns_in_the_headline(settings, verification_config, registry, rules):
+    # Mesmas entidades (Real Madrid), outro protagonista: o modelo erra, a exigência dos nomes evita
+    headline = "Courtois renova com o Real Madrid e fica até 2027, diz jornal"
+    service = with_model(settings, verification_config, registry, rules, {headline: 0.92})
+    evidences = build_for(service, verification_config, "Neymar foi contratado pelo Real Madrid", {
+        "cnn_brasil": [make_result(headline, "https://www.cnnbrasil.com.br/esportes/courtois")],
+    })
+    assert all(e.stance != "supports" for e in evidences)
+    assert all(e.entailment is None for e in evidences)
+
+
+def test_model_reads_the_excerpt_along_with_the_headline(settings, verification_config, registry, rules):
+    headline = "Paquetá aprova empate do Flamengo com o Estudiantes"
+    excerpt = "Equipes ficaram no 0 a 0 pela semifinal da Copa Libertadores"
+    service = with_model(settings, verification_config, registry, rules, {f"{headline}. {excerpt}": 0.99})
+    evidences = build_for(service, verification_config, "Flamengo empata com Estudiantes pela libertadores", {
+        "cnn_brasil": [make_result(headline, "https://www.cnnbrasil.com.br/esportes/paqueta", excerpt=excerpt)],
+    })
+    assert evidences[0].stance == "supports"

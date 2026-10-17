@@ -15,6 +15,7 @@ from app.core.exceptions import register_exception_handlers
 from app.core.security import add_security_headers, limiter
 from app.database.session import get_db
 from app.integrations.web_page_client import WebPageClient
+from app.ml.entailment_model import EntailmentModel
 from app.services.analysis_rules_service import load_analysis_rules
 from app.services.content_extraction_service import ContentExtractionService
 from app.services.evidence_search_service import EvidenceSearchService
@@ -41,12 +42,31 @@ def log_startup_banner(settings: Settings, verification_service: VerificationSer
         f"Ambiente:     {settings.environment}",
         f"Busca:        {', '.join(search.provider_names) if search else 'desativada'}",
         f"Leitura URL:  {'ativada' if settings.page_fetch_enabled else 'desativada'}",
+        f"Modelo NLI:   {'ativado' if verification_service.entailment_enabled else 'desativado'}",
     ]
     width = max(len(line) for line in lines) + 4
     logger.info("=" * width)
     for line in lines:
         logger.info(f"  {line}")
     logger.info("=" * width)
+
+
+def load_entailment_model(settings: Settings) -> EntailmentModel | None:
+    if not settings.nli_enabled:
+        return None
+    logger.info("Carregando o modelo NLI (na primeira execução, baixa ~1,1 GB para %s)", settings.nli_cache_dir)
+    try:
+        return EntailmentModel.load(
+            settings.nli_model_repo,
+            settings.nli_model_revision,
+            settings.nli_model_file,
+            settings.nli_cache_dir,
+            settings.nli_max_tokens,
+        )
+    except Exception:
+        # Sem o modelo a API continua funcionando, com a comparação por palavras
+        logger.exception("Não foi possível carregar o modelo NLI; usando só a semelhança de palavras")
+        return None
 
 
 def build_verification_service(
@@ -61,7 +81,9 @@ def build_verification_service(
         rules,
         registry,
         search_service=EvidenceSearchService.build(settings, config, rules.stopwords, http_client),
-        evidence_service=EvidenceService(settings, config, registry, rules.stopwords),
+        evidence_service=EvidenceService(
+            settings, config, registry, rules.stopwords, entailment_model=load_entailment_model(settings)
+        ),
     )
 
 

@@ -42,6 +42,7 @@ class EvidenceResponse(BaseModel):
     published_at: date | None
     accessed_at: datetime
     relevance: float
+    entailment: float | None
     stance: Stance
     verdict: Verdict | None
     independent: bool

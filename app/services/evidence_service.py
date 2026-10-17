@@ -8,9 +8,10 @@ from urllib.parse import urlparse
 
 from app.core.config import Settings
 from app.integrations.search_client import SearchResult
+from app.ml.entailment_model import EntailmentScorer
 from app.services.evidence_search_service import SearchOutcome
 from app.services.source_registry_service import SourceRegistry
-from app.services.text_processing_service import find_terms, normalize_text, tokenize
+from app.services.text_processing_service import WORD_PATTERN, find_terms, normalize_text, tokenize
 from app.services.verification_config_service import (
     Verdict,
     VerdictPatterns,
@@ -46,43 +47,98 @@ class EvidenceItem:
     verdict: Verdict | None
     # Falso quando é republicação ou outra publicação da mesma organização
     independent: bool
+    # Probabilidade de a manchete implicar a afirmação (modelo NLI); None sem o modelo
+    entailment: float | None = None
+
+
+@dataclass(frozen=True)
+class Candidate:
+    provider: VerificationSourceConfig
+    result: SearchResult
+    relevance: float
+    # A manchete cita os nomes próprios da afirmação (condição para o modelo sustentar)
+    names_covered: bool
 
 
 class EvidenceService:
     def __init__(
-        self, settings: Settings, config: VerificationConfig, registry: SourceRegistry, stopwords: frozenset[str]
+        self,
+        settings: Settings,
+        config: VerificationConfig,
+        registry: SourceRegistry,
+        stopwords: frozenset[str],
+        entailment_model: EntailmentScorer | None = None,
     ):
         self.settings = settings
         self.verdict_patterns: VerdictPatterns = config.verdict_patterns
         self.denial_terms = config.denial_terms
         self.registry = registry
         self.stopwords = stopwords
+        self.entailment_model = entailment_model
 
     def build_evidences(self, outcome: SearchOutcome, claim: str, title: str | None = None) -> list[EvidenceItem]:
         claim_text = normalize_text(f"{title or ''} {claim}")
-        claim_stems = self.stems(claim_text)
-        candidates = [
+        required = self.required_stems(f"{title or ''} {claim}", outcome.keywords)
+        candidates = self._candidates(outcome, self.stems(claim_text), required)
+        entailments = self.score_entailment(candidates, claim)
+        evidences = [
             evidence
-            for source_results in outcome.results
-            for result in source_results.results
-            if (evidence := self._to_evidence(source_results.source, result, claim_text, claim_stems,
-                                              outcome.accessed_at))
+            for candidate, entailment in zip(candidates, entailments, strict=True)
+            if (evidence := self._to_evidence(candidate, claim_text, entailment, outcome.accessed_at))
         ]
-        unique = self.deduplicate(candidates)
+        unique = self.deduplicate(evidences)
         # Mais relevantes primeiro; com veredito explícito antes, em caso de empate
         unique.sort(key=lambda e: (e.relevance, e.verdict is not None), reverse=True)
         return self.mark_independence(unique)
 
+    def required_stems(self, text: str, keywords: tuple[str, ...]) -> set[str]:
+        """Nomes próprios da afirmação; sem nenhum (texto todo em minúsculas), as palavras-chave mais específicas.
+
+        O modelo dá nota alta a manchetes com as mesmas entidades e outro protagonista
+        ("Courtois renova com o Real Madrid" para "Neymar foi contratado pelo Real Madrid").
+        """
+        names = [word for word in WORD_PATTERN.findall(text) if word[0].isupper()]
+        return self.stems(" ".join(names)) or self.stems(" ".join(keywords[: self.settings.verification_min_keywords]))
+
+    def _candidates(self, outcome: SearchOutcome, claim_stems: set[str], required: set[str]) -> list[Candidate]:
+        """Resultados com palavras suficientes em comum com a afirmação (filtro antes do modelo)."""
+        candidates = []
+        for source_results in outcome.results:
+            for result in source_results.results:
+                relevance, overlap = self.compute_relevance(result.title, claim_stems)
+                if overlap >= self.settings.evidence_min_overlap:
+                    names_covered = required <= self.stems(result.title)
+                    candidates.append(Candidate(source_results.source, result, relevance, names_covered))
+        return candidates
+
+    def score_entailment(self, candidates: list[Candidate], claim: str) -> list[float | None]:
+        """Implicação de cada resultado; None sem o modelo ou quando faltam os nomes da afirmação."""
+        scores: list[float | None] = [None] * len(candidates)
+        if self.entailment_model is None:
+            return scores
+        covered = [index for index, candidate in enumerate(candidates) if candidate.names_covered]
+        premises = [self.premise(candidates[index].result) for index in covered]
+        for index, score in zip(covered, self.entailment_model.entailment(premises, claim), strict=True):
+            scores[index] = round(score, 3)
+        return scores
+
+    def premise(self, result: SearchResult) -> str:
+        # O resumo completa a manchete: "Paquetá aprova empate do Flamengo com o Estudiantes"
+        # só diz que foi "pela Libertadores" no resumo
+        excerpt = result.excerpt[: self.settings.evidence_excerpt_max_length]
+        return f"{result.title}. {excerpt}" if excerpt else result.title
+
+    def is_relevant(self, relevance: float, entailment: float | None) -> bool:
+        # O modelo recupera manchetes que dizem o mesmo com outras palavras ("anunciado" × "contratado")
+        if entailment is not None and entailment >= self.settings.nli_min_entailment:
+            return True
+        return relevance >= self.settings.evidence_min_relevance
+
     def _to_evidence(
-        self,
-        provider: VerificationSourceConfig,
-        result: SearchResult,
-        claim_text: str,
-        claim_stems: set[str],
-        accessed_at: datetime,
+        self, candidate: Candidate, claim_text: str, entailment: float | None, accessed_at: datetime
     ) -> EvidenceItem | None:
-        relevance, overlap = self.compute_relevance(result.title, claim_stems)
-        if overlap < self.settings.evidence_min_overlap or relevance < self.settings.evidence_min_relevance:
+        provider, result, relevance = candidate.provider, candidate.result, candidate.relevance
+        if not self.is_relevant(relevance, entailment):
             return None
 
         registered = self.registry.find(result.url)
@@ -100,9 +156,12 @@ class EvidenceService:
             published_at=result.published_at,
             accessed_at=accessed_at,
             relevance=round(relevance, 3),
-            stance=self.detect_stance(verdict, category, relevance, self.is_denial(result.title, claim_text)),
+            stance=self.detect_stance(
+                verdict, category, relevance, entailment, denial=self.is_denial(result.title, claim_text)
+            ),
             verdict=verdict,
             independent=True,
+            entailment=entailment,
         )
 
     def compute_relevance(self, result_title: str, claim_stems: set[str]) -> tuple[float, int]:
@@ -147,17 +206,27 @@ class EvidenceService:
         return any(term not in find_terms(claim_text, self.denial_terms) for term in found)
 
     def detect_stance(
-        self, verdict: Verdict | None, category: EvidenceCategory, relevance: float, denial: bool = False
+        self,
+        verdict: Verdict | None,
+        category: EvidenceCategory,
+        relevance: float,
+        entailment: float | None = None,
+        denial: bool = False,
     ) -> Stance:
         if verdict == "false":
             return "contradicts"
         if verdict == "true":
             return "supports"
-        # Reportagem sobre o mesmo fato, em fonte com apuração própria, sustenta a afirmação;
-        # se o título desmente algo, a palavra em comum não basta para concluir
-        if category in REPORTING_CATEGORIES and relevance >= self.settings.decision_min_relevance and not denial:
-            return "supports"
-        return "neutral"
+        # Só reportagens de fontes com apuração própria sustentam; manchete que desmente algo, nunca
+        if category not in REPORTING_CATEGORIES or denial:
+            return "neutral"
+        # Com o modelo, a manchete precisa implicar a afirmação; sem ele, vale a semelhança de palavras.
+        # O modelo nunca gera "contradiz": contradição só vem do veredito das agências de checagem
+        if entailment is not None:
+            supported = entailment >= self.settings.nli_min_entailment
+        else:
+            supported = relevance >= self.settings.decision_min_relevance
+        return "supports" if supported else "neutral"
 
     @staticmethod
     def deduplicate(evidences: list[EvidenceItem]) -> list[EvidenceItem]:

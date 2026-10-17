@@ -58,3 +58,20 @@ def test_text_without_keywords_skips_search(settings, verification_config, rules
     lupa = FakeSearchClient([])
     assert build_service(settings, verification_config, rules, {"lupa": lupa}).search("de o a e", None) is None
     assert lupa.queries == []
+
+
+def test_retries_with_specific_keywords_when_results_are_off_topic(settings, verification_config, rules):
+    folha = FakeSearchClient([make_result("Sob chuva, ato contra Temer em Curitiba reúne 250 pessoas",
+                                          "https://www1.folha.uol.com.br/poder/ato.shtml")])
+    outcome = build_service(settings, verification_config, rules, {"folha": folha}).search(USER_CLAIM, USER_TITLE)
+    assert len(folha.queries) == 2
+    # A página repetida na segunda busca não é duplicada
+    assert len(outcome.results[0].results) == 1
+
+
+def test_does_not_retry_when_results_mention_specific_keywords(settings, verification_config, rules):
+    service = build_service(settings, verification_config, rules, {})
+    specific = service.extract_keywords(USER_CLAIM, USER_TITLE)[: settings.verification_min_keywords]
+    folha = FakeSearchClient([make_result(" ".join(specific).title(), "https://www1.folha.uol.com.br/a.shtml")])
+    build_service(settings, verification_config, rules, {"folha": folha}).search(USER_CLAIM, USER_TITLE)
+    assert len(folha.queries) == 1

@@ -30,6 +30,16 @@ class FakeSearchService:
         return self.outcome
 
 
+class FakeEntailmentModel:
+    """Devolve a implicação definida para cada manchete (0 quando não definida)."""
+
+    def __init__(self, scores: dict[str, float]):
+        self.scores = scores
+
+    def entailment(self, premises: list[str], hypothesis: str) -> list[float]:
+        return [self.scores.get(premise, 0.0) for premise in premises]
+
+
 def make_result(
     title: str, url: str, excerpt: str = "", published_at: date | None = date(2026, 8, 13), **extra
 ) -> SearchResult:

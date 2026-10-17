@@ -95,7 +95,12 @@ class ReportService:
             )
         if any(e.published_at is None for e in decisive):
             limitations.append("A data de publicação de parte das evidências não foi identificada.")
-        if evidences:
+        if any(e.entailment is not None for e in evidences):
+            limitations.append(
+                "A relação entre as evidências e a afirmação foi estimada automaticamente por um modelo de "
+                "linguagem, a partir das manchetes. Confira os links antes de tirar conclusões."
+            )
+        elif evidences:
             limitations.append(
                 "A relação entre as evidências e a afirmação foi estimada pelas palavras em comum, "
                 "não pelo significado. Confira os links antes de tirar conclusões."
