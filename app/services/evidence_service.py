@@ -201,8 +201,15 @@ class EvidenceService:
         return None
 
     def is_denial(self, result_title: str, claim_text: str) -> bool:
-        """Título com desmentido ("nega", "descarta") que a própria afirmação não contém."""
-        found = find_terms(normalize_text(result_title), self.denial_terms)
+        """Título com desmentido ("nega", "descarta") que a própria afirmação não contém.
+
+        Também conta o veredito de falso em qualquer veículo: o modelo chega a ver implicação
+        em "É falso que Japão declarou..." para a afirmação "Japão declarou...".
+        """
+        title = normalize_text(result_title)
+        if self._match_verdict(title, self.verdict_patterns) == "false":
+            return True
+        found = find_terms(title, self.denial_terms)
         return any(term not in find_terms(claim_text, self.denial_terms) for term in found)
 
     def detect_stance(

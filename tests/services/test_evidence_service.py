@@ -191,3 +191,12 @@ def test_model_reads_the_excerpt_along_with_the_headline(settings, verification_
         "cnn_brasil": [make_result(headline, "https://www.cnnbrasil.com.br/esportes/paqueta", excerpt=excerpt)],
     })
     assert evidences[0].stance == "supports"
+
+
+def test_false_verdict_in_news_outlet_headline_never_supports(settings, verification_config, registry, rules):
+    headline = "É falso que o Japão declarou ivermectina mais eficaz do que vacinas contra a covid"
+    service = with_model(settings, verification_config, registry, rules, {headline: 0.82})
+    evidences = build_for(service, verification_config, "Japão declarou ivermectina mais eficaz do que vacinas", {
+        "folha": [make_result(headline, "https://www1.folha.uol.com.br/equilibrioesaude/japao.shtml")],
+    })
+    assert evidences[0].stance == "neutral"

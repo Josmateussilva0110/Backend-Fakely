@@ -31,6 +31,14 @@
       "search_url": "https://veja.abril.com.br/wp-json/wp/v2/posts",
       "allowed_domains": ["veja.abril.com.br"],
       "default_verdict": null
+    },
+    {
+      "key": "exame",
+      "name": "Exame",
+      "client": "wordpress",
+      "search_url": "https://exame.com/wp-json/wp/v2/posts/",
+      "allowed_domains": ["exame.com"],
+      "default_verdict": null
     }
   ],
   "verdict_patterns": {

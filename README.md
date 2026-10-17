@@ -173,7 +173,7 @@ Os erros seguem o formato `{"detail": "...", "errors": [{"field": "...", "messag
 | Fontes confiáveis sustentam a afirmação | `likely_true` |
 | Fontes divergem, nenhuma evidência, fontes fora do ar ou texto curto | `inconclusive` |
 
-- **Fontes consultadas:** Agência Lupa, Folha de S.Paulo, CNN Brasil e Veja.
+- **Fontes consultadas:** Agência Lupa (checagem); Folha de S.Paulo, CNN Brasil, Veja e Exame (jornalismo). A lista fica em `app/data/verification_sources.json`.
 - **O que conta:** só evidências relevantes, de fontes cadastradas em `app/data/source_registry.json` e independentes entre si.
 - **Quando uma reportagem sustenta:** um modelo local de inferência textual ([mDeBERTa multilíngue](https://huggingface.co/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7), licença MIT) estima se a manchete implica a afirmação, mesmo com outras palavras ("anunciado como piloto da Haas na F1" × "contratado para a Fórmula 1"). A manchete também precisa citar os nomes próprios da afirmação, e não pode desmentir o fato ("nega", "descarta").
 - **Quando contradiz:** só pelo veredito das agências de checagem ("é falso que..."). O modelo nunca conclui que algo é falso.

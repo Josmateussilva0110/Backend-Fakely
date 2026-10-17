@@ -29,6 +29,7 @@
     {"key": "cnn_brasil", "name": "CNN Brasil", "category": "news_outlet", "domains": ["cnnbrasil.com.br"]},
     {"key": "bbc", "name": "BBC", "category": "news_outlet", "domains": ["bbc.com"]},
     {"key": "veja", "name": "Veja", "category": "news_outlet", "domains": ["veja.abril.com.br"]},
+    {"key": "exame", "name": "Exame", "category": "news_outlet", "domains": ["exame.com"]},
     {"key": "nexo", "name": "Nexo Jornal", "category": "news_outlet", "domains": ["nexojornal.com.br"]},
     {"key": "reuters", "name": "Reuters", "category": "news_outlet", "domains": ["reuters.com"]},
     {"key": "ap", "name": "Associated Press", "category": "news_outlet", "domains": ["apnews.com"]}

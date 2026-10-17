@@ -12,7 +12,7 @@ def build_service(settings, config, rules, clients: dict) -> EvidenceSearchServi
 
 def test_config_lists_search_providers(verification_config):
     keys = [s.key for s in verification_config.sources]
-    assert keys == ["lupa", "folha", "cnn_brasil", "veja"]
+    assert keys == ["lupa", "folha", "cnn_brasil", "veja", "exame"]
 
 
 def test_extract_keywords_prefers_specific_words(settings, verification_config, rules):
