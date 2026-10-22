@@ -39,13 +39,25 @@
       "search_url": "https://exame.com/wp-json/wp/v2/posts/",
       "allowed_domains": ["exame.com"],
       "default_verdict": null
+    },
+    {
+      "key": "boatos",
+      "name": "Boatos.org",
+      "client": "wordpress",
+      "search_url": "https://www.boatos.org/wp-json/wp/v2/posts",
+      "allowed_domains": ["boatos.org"],
+      "default_verdict": null
     }
   ],
   "verdict_patterns": {
     "false": [
       "é falso", "falso:", "#falso", "não é verdade", "é enganoso", "enganoso:", "#enganoso",
       "boato", "é montagem", "é mentira", "é golpe", "é fake", "não há evidências",
-      "não há provas", "sem evidências", "não é real", "é falsa"
+      "não há provas", "sem evidências", "não é real", "é falsa",
+      "fora de contexto", "distorce", "não comprova", "não prova",
+      "gerada por ia", "gerado por ia", "gerada com ia", "gerado com ia",
+      "criada por ia", "criado por ia", "criada com ia", "criado com ia",
+      "feita com ia", "feito com ia", "fake criad"
     ],
     "true": [
       "é verdade que", "é verdadeiro", "verdadeiro:", "#verdadeiro", "é verdadeira"

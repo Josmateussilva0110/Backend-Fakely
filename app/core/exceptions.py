@@ -61,6 +61,11 @@ class ForbiddenError(AppError):
     status_code = 403
 
 
+class ServiceUnavailableError(AppError):
+    # Servidor temporariamente sem capacidade (ex.: fila do modelo cheia); o cliente pode tentar de novo
+    status_code = 503
+
+
 class UnprocessableError(AppError):
     # Entrada bem formada, mas que não pode ser processada (ex.: URL bloqueada ou ilegível)
     status_code = 422

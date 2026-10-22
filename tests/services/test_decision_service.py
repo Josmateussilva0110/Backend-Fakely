@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.models.news_analysis_model import Classification
+from app.models.news_analysis_model import Classification, Confidence, VerificationStatus
 from app.services.decision_service import DecisionService
 from app.services.evidence_service import EvidenceItem
 
@@ -79,3 +79,24 @@ def test_report_supported_by_model_is_decisive_despite_low_word_overlap(decision
     evidence = make_evidence("supports", organization="folha", category="news_outlet",
                              relevance=0.5, entailment=settings.nli_min_entailment)
     assert decision_service.decide([evidence], CHECKED).classification == Classification.LIKELY_TRUE
+
+
+def supporting(*organizations):
+    return [make_evidence("supports", organization=o, category="news_outlet") for o in organizations]
+
+
+def test_confidence_is_high_with_agreeing_sources_and_all_sites(decision_service):
+    decision = decision_service.decide(supporting("folha", "veja"), CHECKED)
+    assert decision_service.confidence(decision, VerificationStatus.COMPLETE) == Confidence.HIGH
+
+
+def test_confidence_is_medium_with_one_source_or_partial_search(decision_service):
+    one = decision_service.decide(supporting("folha"), CHECKED)
+    assert decision_service.confidence(one, VerificationStatus.COMPLETE) == Confidence.MEDIUM
+    two = decision_service.decide(supporting("folha", "veja"), CHECKED)
+    assert decision_service.confidence(two, VerificationStatus.PARTIAL) == Confidence.MEDIUM
+
+
+def test_inconclusive_has_low_confidence(decision_service):
+    decision = decision_service.decide([], CHECKED)
+    assert decision_service.confidence(decision, VerificationStatus.COMPLETE) == Confidence.LOW

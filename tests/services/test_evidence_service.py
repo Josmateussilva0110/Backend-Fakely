@@ -1,5 +1,8 @@
 from datetime import date
 
+import pytest
+
+from app.core.exceptions import ServiceUnavailableError
 from app.services.evidence_service import EvidenceService
 from tests.fakes import FakeEntailmentModel, make_outcome, make_result
 
@@ -200,3 +203,71 @@ def test_false_verdict_in_news_outlet_headline_never_supports(settings, verifica
         "folha": [make_result(headline, "https://www1.folha.uol.com.br/equilibrioesaude/japao.shtml")],
     })
     assert evidences[0].stance == "neutral"
+
+
+def test_question_headline_has_no_verdict(evidence_service, verification_config):
+    lupa = verification_config.sources[0]
+    result = make_result("É verdade que o TSE destruiu 200 mil urnas eletrônicas?", "u",
+                         excerpt="É verdade que o TSE se livrou de urnas?")
+    assert evidence_service.detect_verdict(lupa, result, "fact_checker") is None
+
+
+def test_debunk_wording_is_false_verdict(evidence_service, verification_config):
+    lupa = verification_config.sources[0]
+    detect = evidence_service.detect_verdict
+    photo = make_result("Foto de Flávio com elefante abatido foi gerada por IA", "u")
+    assert detect(lupa, photo, "fact_checker") == "false"
+    assert detect(lupa, make_result("Vídeos de doação circulam fora de contexto", "u"), "fact_checker") == "false"
+    assert detect(lupa, make_result("Post distorce falas de Lula sobre analfabetismo", "u"), "fact_checker") == "false"
+
+
+SEEDORF_HEADLINE = "Corinthians anuncia Clarence Seedorf como novo técnico"
+
+
+def seedorf_evidence(service, verification_config, published_at, reference_date=None):
+    outcome = make_outcome(verification_config, {"folha": [
+        make_result(SEEDORF_HEADLINE, "https://www1.folha.uol.com.br/esporte/seedorf.shtml", published_at=published_at),
+    ]})
+    return service.build_evidences(outcome, SEEDORF_CLAIM, reference_date=reference_date)[0]
+
+
+def test_old_report_does_not_support_new_fact(evidence_service, verification_config, settings):
+    # Análise em 06/10/2026: matéria de 2 anos antes é só contexto
+    old = seedorf_evidence(evidence_service, verification_config, date(2024, 10, 6))
+    assert old.stance == "neutral"
+    assert old.out_of_window
+
+
+def test_report_close_to_news_date_supports(evidence_service, verification_config):
+    evidence = seedorf_evidence(evidence_service, verification_config, date(2024, 10, 6),
+                                reference_date=date(2024, 10, 1))
+    assert evidence.stance == "supports"
+    assert not evidence.out_of_window
+
+
+def test_fact_check_verdict_ignores_the_window(evidence_service, verification_config):
+    outcome = make_outcome(verification_config, {"lupa": [
+        make_result("É falso que a ivermectina tenha 70% de eficácia contra a Covid",
+                    "https://www.agencialupa.org/checagem/x", published_at=date(2020, 5, 1)),
+    ]})
+    assert evidence_service.build_evidences(outcome, CLAIM)[0].stance == "contradicts"
+
+
+def test_busy_model_returns_service_unavailable(settings, verification_config, registry, rules):
+    service = EvidenceService(settings.model_copy(update={"nli_queue_timeout_seconds": 0.01}), verification_config,
+                              registry, rules.stopwords, entailment_model=FakeEntailmentModel({}))
+    service.inference_slots.acquire()  # outra análise ocupando o modelo
+    with pytest.raises(ServiceUnavailableError):
+        build_for(service, verification_config, SEEDORF_CLAIM, {
+            "folha": [make_result(SEEDORF_HEADLINE, "https://www1.folha.uol.com.br/esporte/seedorf.shtml")],
+        })
+
+
+def test_fact_check_with_extra_words_counts_when_model_matches(settings, verification_config, registry, rules):
+    headline = "É falso que Tony Ramos morreu aos 89 anos em setembro de 2026 e morte foi anunciada na TV"
+    service = with_model(settings, verification_config, registry, rules, {headline: 0.61})
+    evidences = build_for(service, verification_config, "Tony Ramos morreu aos 89 anos", {
+        "boatos": [make_result(headline, "https://www.boatos.org/entretenimento/tony-ramos.html")],
+    })
+    assert evidences[0].verdict == "false"
+    assert evidences[0].stance == "contradicts"

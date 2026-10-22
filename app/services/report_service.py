@@ -93,6 +93,17 @@ class ReportService:
                 f"Evidências publicadas há mais de {self.settings.evidence_outdated_after_days} dias "
                 f"podem estar desatualizadas: {_cite(outdated)}."
             )
+        out_of_window = [e for e in evidences if e.out_of_window and e.verdict is None]
+        if out_of_window:
+            days = self.settings.evidence_support_window_days
+            if len(out_of_window) == 1:
+                text = f"1 publicação com mais de {days} dias de diferença da data da notícia foi usada"
+            else:
+                text = (
+                    f"{len(out_of_window)} publicações com mais de {days} dias de diferença "
+                    "da data da notícia foram usadas"
+                )
+            limitations.append(f"{text} só como contexto, sem sustentar a afirmação.")
         if any(e.published_at is None for e in decisive):
             limitations.append("A data de publicação de parte das evidências não foi identificada.")
         if any(e.entailment is not None for e in evidences):

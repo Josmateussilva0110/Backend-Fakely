@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.core.config import Settings
-from app.models.news_analysis_model import Classification
-from app.services.evidence_service import EvidenceItem
+from app.models.news_analysis_model import Classification, Confidence, VerificationStatus
+from app.services.evidence_service import EvidenceItem, verdict_matches_claim
 
 DecisionReason = Literal[
     "supported",
@@ -43,6 +43,8 @@ class DecisionService:
         # Reportagem avaliada pelo modelo: a posição "sustenta" já exigiu a implicação mínima
         if evidence.verdict is None and evidence.entailment is not None:
             return evidence.entailment >= self.settings.nli_min_entailment
+        if evidence.verdict is not None:
+            return verdict_matches_claim(evidence.relevance, evidence.entailment, self.settings)
         return evidence.relevance >= self.settings.decision_min_relevance
 
     def decide(self, evidences: list[EvidenceItem], sources_checked: tuple[str, ...]) -> Decision:
@@ -63,3 +65,13 @@ class DecisionService:
         # Ausência de resultados não significa que a afirmação seja falsa
         reason: DecisionReason = "insufficient_evidence" if evidences else "no_evidence"
         return Decision(Classification.INCONCLUSIVE, reason, supporting, contradicting)
+
+    def confidence(self, decision: Decision, status: VerificationStatus) -> Confidence:
+        """Regra visível, não probabilidade: quantas fontes independentes concordam e se todas responderam."""
+        if decision.classification == Classification.INCONCLUSIVE:
+            return Confidence.LOW
+        is_true = decision.classification == Classification.LIKELY_TRUE
+        agreeing = decision.supporting if is_true else decision.contradicting
+        if len(agreeing) >= self.settings.confidence_high_min_sources and status == VerificationStatus.COMPLETE:
+            return Confidence.HIGH
+        return Confidence.MEDIUM

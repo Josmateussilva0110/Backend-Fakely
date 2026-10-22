@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     rate_limit_create: str = "10/minute"
     rate_limit_storage_uri: str = "memory://"
+    # IPs dos proxies reversos (Nginx, Caddy) autorizados a informar o IP real em X-Forwarded-For.
+    # Vazio: o cabeçalho é ignorado (senão qualquer cliente poderia forjar o IP e fugir do limite)
+    trusted_proxies: list[str] = []
 
     analysis_rules_path: Path = BASE_DIR / "app" / "data" / "analysis_rules.json"
     source_registry_path: Path = BASE_DIR / "app" / "data" / "source_registry.json"
@@ -58,10 +61,15 @@ class Settings(BaseSettings):
     evidence_min_overlap: int = 2
     evidence_excerpt_max_length: int = 300
     evidence_outdated_after_days: int = 730
+    # Reportagem só sustenta se publicada até N dias da data da notícia (ou da análise, sem data):
+    # evita que "X é o novo técnico" seja confirmado pela passagem anterior do mesmo técnico
+    evidence_support_window_days: int = 60
     decision_min_relevance: float = 0.7
     # Suficiência: fontes independentes necessárias para concluir
     decision_min_supporting_sources: int = 1
     decision_min_contradicting_sources: int = 1
+    # Confiança alta: ao menos N fontes independentes concordam, nenhuma discorda e todas responderam
+    confidence_high_min_sources: int = 2
 
     # Inferência textual (NLI): decide quando uma reportagem sustenta a afirmação.
     # Desligado, volta a valer só a semelhança de palavras (decision_min_relevance)
@@ -72,6 +80,9 @@ class Settings(BaseSettings):
     nli_cache_dir: Path = BASE_DIR / ".models"
     nli_max_tokens: int = 256
     nli_min_entailment: float = 0.6
+    # O modelo usa todos os núcleos da CPU: inferências em paralelo só disputariam o processador
+    nli_max_concurrent: int = 1
+    nli_queue_timeout_seconds: float = 30.0
 
     # Leitura da página quando o usuário envia só a URL (com proteção contra SSRF)
     page_fetch_enabled: bool = True

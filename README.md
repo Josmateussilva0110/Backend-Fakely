@@ -101,10 +101,9 @@ python scripts/playground.py       # http://localhost:5173
 ```bash
 pytest                             # automatizados (sem banco e sem internet)
 ruff check .                       # lint (imports sem uso, ordem, estilo)
-python scripts/smoke_test.py       # ponta a ponta, com a API rodando
 ```
 
-Para testar requisição por requisição, use [`docs/api-tests.http`](docs/api-tests.http).
+Para testar requisição por requisição, use a documentação interativa em http://localhost:8000/docs.
 
 ## Produção
 
@@ -121,6 +120,7 @@ Crie o `.env` a partir do `.env.example` e ajuste:
 | `POSTGRES_PASSWORD` | Senha forte, diferente da de desenvolvimento (e igual à de `DATABASE_URL`) |
 | `ADMIN_API_KEY` | Chave nova, gerada com o comando do passo 2 de desenvolvimento |
 | `NLI_ENABLED` | `true` (exige ~1,5 GB de RAM livre para o modelo) |
+| `TRUSTED_PROXIES` | IP(s) do proxy reverso, ex.: `["127.0.0.1"]`. Com Docker, o gateway da rede (veja abaixo) |
 
 Nunca versione o `.env` (ele já está no `.gitignore`).
 
@@ -149,8 +149,9 @@ python -m app
 
 ### Observações
 
+- **Proxy reverso:** sem `TRUSTED_PROXIES`, a API vê o IP do proxy, e o limite por minuto passa a valer para todos os usuários juntos. Cadastre o IP de quem chega na API: `127.0.0.1` sem Docker; com Docker, o gateway da rede, que aparece em `docker network inspect backend_default` (ex.: `172.18.0.1`). Nunca use `*`: qualquer cliente poderia forjar o IP e fugir do limite.
 - O limite de análises por minuto (`RATE_LIMIT_CREATE`) fica na memória do processo (`RATE_LIMIT_STORAGE_URI=memory://`). Ele zera quando a API reinicia e não é compartilhado entre várias instâncias.
-- Atrás de um proxy reverso, a API vê o IP do proxy, e não o do usuário. Com isso, o limite por minuto passa a valer para todos os usuários juntos.
+- **Análises simultâneas:** o modelo atende uma análise por vez (`NLI_MAX_CONCURRENT=1`), porque já usa todos os núcleos. As outras esperam na fila; depois de `NLI_QUEUE_TIMEOUT_SECONDS`, a API responde `503` e o cliente pode tentar de novo.
 
 ## Endpoints (`/api/v1`)
 
@@ -165,6 +166,17 @@ python -m app
 
 Os erros seguem o formato `{"detail": "...", "errors": [{"field": "...", "message": "..."}]}`.
 
+A análise (`GET /news-analyses/{id}`) vem agrupada por finalidade:
+
+| Bloco | Conteúdo |
+|---|---|
+| `result` | Classificação, nível de confiança, justificativa e quantas fontes independentes sustentam ou contradizem |
+| `evidences` | Publicações em três grupos: `supporting`, `contradicting` e `related` (sobre o assunto, sem posição). Cada uma traz `scores` (relevância e implicação) para auditoria |
+| `warnings` | Limitações, sinais de estilo e avaliação do site de origem |
+| `verification` | Status da busca, sites consultados e com falha, palavras-chave e versão das regras |
+
+Na listagem, cada item traz só `id`, `analyzed_at`, `news`, `claim` e o resumo de `result`.
+
 ## Como a classificação é decidida
 
 | Situação | Resultado |
@@ -173,10 +185,18 @@ Os erros seguem o formato `{"detail": "...", "errors": [{"field": "...", "messag
 | Fontes confiáveis sustentam a afirmação | `likely_true` |
 | Fontes divergem, nenhuma evidência, fontes fora do ar ou texto curto | `inconclusive` |
 
-- **Fontes consultadas:** Agência Lupa (checagem); Folha de S.Paulo, CNN Brasil, Veja e Exame (jornalismo). A lista fica em `app/data/verification_sources.json`.
+- **Fontes consultadas:** Agência Lupa e Boatos.org (checagem); Folha de S.Paulo, CNN Brasil, Veja e Exame (jornalismo). A lista fica em `app/data/verification_sources.json`.
 - **O que conta:** só evidências relevantes, de fontes cadastradas em `app/data/source_registry.json` e independentes entre si.
 - **Quando uma reportagem sustenta:** um modelo local de inferência textual ([mDeBERTa multilíngue](https://huggingface.co/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7), licença MIT) estima se a manchete implica a afirmação, mesmo com outras palavras ("anunciado como piloto da Haas na F1" × "contratado para a Fórmula 1"). A manchete também precisa citar os nomes próprios da afirmação, e não pode desmentir o fato ("nega", "descarta").
-- **Quando contradiz:** só pelo veredito das agências de checagem ("é falso que..."). O modelo nunca conclui que algo é falso.
+- **Data:** uma reportagem só sustenta se foi publicada até `EVIDENCE_SUPPORT_WINDOW_DAYS` (60) dias da data da notícia, ou da análise quando a notícia não tem data. Assim, a passagem anterior de um técnico não confirma que ele é "o novo técnico". As mais distantes aparecem como contexto.
+- **Quando contradiz:** só pelo veredito das agências de checagem ("é falso que...", "foi gerada por IA", "fora de contexto"). Manchete em forma de pergunta não conta como veredito. O veredito vale sem limite de data, porque boatos antigos voltam a circular. O modelo nunca conclui que algo é falso.
+- **Nível de confiança** (não é probabilidade):
+
+  | Nível | Regra |
+  |---|---|
+  | Alta | Ao menos `CONFIDENCE_HIGH_MIN_SOURCES` (2) fontes independentes concordam, nenhuma discorda e todos os sites responderam |
+  | Média | Só 1 fonte independente, ou algum site não respondeu |
+  | Baixa | Resultado inconclusivo |
 - **O que não decide:** o estilo do texto só gera alertas. Estar em um site conhecido não torna a notícia verdadeira.
 
 ## Problemas comuns
@@ -187,7 +207,8 @@ Os erros seguem o formato `{"detail": "...", "errors": [{"field": "...", "messag
 | Windows: `python` abre a Microsoft Store ou não é encontrado | Instale o Python 3.12 de python.org marcando "Add to PATH", ou use `py -3.12` |
 | Windows: `docker` não é reconhecido ou não conecta | Abra o Docker Desktop e espere ele iniciar |
 | `/health` retorna 503 ou `connection refused` | Suba o banco: `docker compose up -d db` |
-| `relation ... does not exist` | `alembic upgrade head` |
+| `relation ... does not exist` ou `column ... does not exist` | `alembic upgrade head` |
+| 503 "Muitas análises em andamento" | Fila do modelo cheia. Tente de novo ou aumente `NLI_QUEUE_TIMEOUT_SECONDS` |
 | Erro de CORS no front | Adicione a origem em `CORS_ORIGINS` e reinicie a API |
 | 429 | Limite de análises por minuto (`RATE_LIMIT_CREATE`) |
 | `Não foi possível carregar o modelo NLI` no log | Sem internet na primeira execução ou pouca RAM. A API continua funcionando, só com a comparação por palavras |

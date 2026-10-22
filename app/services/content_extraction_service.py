@@ -1,5 +1,3 @@
-"""Extrai título, texto e data de publicação da página informada pelo usuário."""
-
 from dataclasses import dataclass
 from datetime import date
 

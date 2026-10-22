@@ -47,21 +47,25 @@ def test_create_returns_report_with_evidences(client, with_search):
     assert response.status_code == 201
     body = response.json()
     assert response.headers["Location"].endswith(f"{URL}/{body['id']}")
-    assert body["classification"] == "likely_false"
-    assert body["classification_label"] == "Possivelmente falsa"
+    result = body["result"]
+    assert result["classification"] == "likely_false"
+    assert result["label"] == "Possivelmente falsa"
+    assert "Agência Lupa" in result["justification"]
+    assert result["contradicting_sources"] == 1 and result["supporting_sources"] == 0
+    # Uma fonte só: confiança média (nível com regra visível, nunca probabilidade)
+    assert result["confidence"] == "medium" and result["confidence_label"] == "Média"
+    assert "probability_fake" not in body and "probability" not in result
     assert body["claim"] == TITLE
-    assert "Agência Lupa" in body["justification"]
-    assert body["verification_status"] == "complete"
-    assert body["source_assessment"] == {
+    assert body["verification"]["status"] == "complete"
+    assert body["warnings"]["source_assessment"] == {
         "domain": "blogqualquer.net", "recognized": False, "name": None, "category": None,
     }
-    evidence = body["evidences"][0]
+    assert body["evidences"]["supporting"] == [] and body["evidences"]["related"] == []
+    evidence = body["evidences"]["contradicting"][0]
     assert evidence["url"] == LUPA_FALSE.url
-    assert evidence["stance"] == "contradicts"
     assert evidence["category"] == "fact_checker"
-    assert "organization" not in evidence
-    # Nenhuma pontuação é apresentada como probabilidade
-    assert "confidence" not in body and "probability_fake" not in body
+    assert evidence["scores"]["relevance"] >= 0.7
+    assert "organization" not in evidence and "retrieved_via" not in evidence
     assert body["disclaimer"]
 
     stored = client.get(f"{URL}/{body['id']}").json()
@@ -72,15 +76,16 @@ def test_create_returns_report_with_evidences(client, with_search):
 def test_without_evidence_result_is_inconclusive(client, with_search):
     with_search({"lupa": []})
     body = create(client).json()
-    assert body["classification"] == "inconclusive"
-    assert body["style_indicators"]
-    assert body["evidences"] == []
+    assert body["result"]["classification"] == "inconclusive"
+    assert body["result"]["confidence"] == "low"
+    assert body["warnings"]["style_indicators"]
+    assert body["evidences"] == {"supporting": [], "contradicting": [], "related": []}
 
 
 def test_search_disabled_is_inconclusive(client):
     body = create(client).json()
-    assert body["classification"] == "inconclusive"
-    assert body["verification_status"] == "skipped"
+    assert body["result"]["classification"] == "inconclusive"
+    assert body["verification"]["status"] == "skipped"
 
 
 def test_create_from_url_only(client, with_search):
@@ -145,6 +150,7 @@ def test_list_paginates_and_filters(client, with_search):
     assert page["pages"] == 2
     assert len(page["items"]) == 2
     assert "evidences" not in page["items"][0]
+    assert page["items"][0]["result"]["label"]
     assert page["items"][0]["news"]["title"] == TITLE
 
 
