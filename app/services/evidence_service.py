@@ -1,12 +1,14 @@
 """Transforma resultados de busca em evidências: relevância, posição, deduplicação e independência."""
 
 import re
+import threading
 from dataclasses import dataclass, replace
 from datetime import date, datetime
 from typing import Literal
 from urllib.parse import urlparse
 
 from app.core.config import Settings
+from app.core.exceptions import ServiceUnavailableError
 from app.integrations.search_client import SearchResult
 from app.ml.entailment_model import EntailmentScorer
 from app.services.evidence_search_service import SearchOutcome
@@ -49,6 +51,8 @@ class EvidenceItem:
     independent: bool
     # Probabilidade de a manchete implicar a afirmação (modelo NLI); None sem o modelo
     entailment: float | None = None
+    # Reportagem distante da data da notícia: serve só de contexto, não sustenta
+    out_of_window: bool = False
 
 
 @dataclass(frozen=True)
@@ -75,8 +79,14 @@ class EvidenceService:
         self.registry = registry
         self.stopwords = stopwords
         self.entailment_model = entailment_model
+        # Compartilhado entre as requisições (o serviço é criado uma vez, no lifespan)
+        self.inference_slots = threading.BoundedSemaphore(settings.nli_max_concurrent)
 
-    def build_evidences(self, outcome: SearchOutcome, claim: str, title: str | None = None) -> list[EvidenceItem]:
+    def build_evidences(
+        self, outcome: SearchOutcome, claim: str, title: str | None = None, reference_date: date | None = None
+    ) -> list[EvidenceItem]:
+        """reference_date: data da notícia; sem ela, vale o dia da análise."""
+        reference = reference_date or outcome.accessed_at.date()
         claim_text = normalize_text(f"{title or ''} {claim}")
         required = self.required_stems(f"{title or ''} {claim}", outcome.keywords)
         candidates = self._candidates(outcome, self.stems(claim_text), required)
@@ -84,7 +94,7 @@ class EvidenceService:
         evidences = [
             evidence
             for candidate, entailment in zip(candidates, entailments, strict=True)
-            if (evidence := self._to_evidence(candidate, claim_text, entailment, outcome.accessed_at))
+            if (evidence := self._to_evidence(candidate, claim_text, entailment, reference, outcome.accessed_at))
         ]
         unique = self.deduplicate(evidences)
         # Mais relevantes primeiro; com veredito explícito antes, em caso de empate
@@ -117,10 +127,20 @@ class EvidenceService:
         if self.entailment_model is None:
             return scores
         covered = [index for index, candidate in enumerate(candidates) if candidate.names_covered]
+        if not covered:
+            return scores
         premises = [self.premise(candidates[index].result) for index in covered]
-        for index, score in zip(covered, self.entailment_model.entailment(premises, claim), strict=True):
+        for index, score in zip(covered, self.run_model(premises, claim), strict=True):
             scores[index] = round(score, 3)
         return scores
+
+    def run_model(self, premises: list[str], claim: str) -> list[float]:
+        if not self.inference_slots.acquire(timeout=self.settings.nli_queue_timeout_seconds):
+            raise ServiceUnavailableError("Muitas análises em andamento. Tente novamente em instantes.")
+        try:
+            return self.entailment_model.entailment(premises, claim)
+        finally:
+            self.inference_slots.release()
 
     def premise(self, result: SearchResult) -> str:
         # O resumo completa a manchete: "Paquetá aprova empate do Flamengo com o Estudiantes"
@@ -135,11 +155,12 @@ class EvidenceService:
         return relevance >= self.settings.evidence_min_relevance
 
     def _to_evidence(
-        self, candidate: Candidate, claim_text: str, entailment: float | None, accessed_at: datetime
+        self, candidate: Candidate, claim_text: str, entailment: float | None, reference: date, accessed_at: datetime
     ) -> EvidenceItem | None:
         provider, result, relevance = candidate.provider, candidate.result, candidate.relevance
         if not self.is_relevant(relevance, entailment):
             return None
+        out_of_window = not self.is_within_window(result.published_at, reference)
 
         registered = self.registry.find(result.url)
         category: EvidenceCategory = registered.category if registered else "unknown"
@@ -157,12 +178,20 @@ class EvidenceService:
             accessed_at=accessed_at,
             relevance=round(relevance, 3),
             stance=self.detect_stance(
-                verdict, category, relevance, entailment, denial=self.is_denial(result.title, claim_text)
+                verdict, category, relevance, entailment,
+                denial=self.is_denial(result.title, claim_text), out_of_window=out_of_window,
             ),
             verdict=verdict,
             independent=True,
             entailment=entailment,
+            out_of_window=out_of_window,
         )
+
+    def is_within_window(self, published_at: date | None, reference: date) -> bool:
+        # Sem data não há como comparar; a limitação "data não identificada" avisa o usuário
+        if published_at is None:
+            return True
+        return abs((published_at - reference).days) <= self.settings.evidence_support_window_days
 
     def compute_relevance(self, result_title: str, claim_stems: set[str]) -> tuple[float, int]:
         """Semelhança entre o título do resultado e a afirmação, de 0 a 1.
@@ -186,7 +215,8 @@ class EvidenceService:
     def detect_verdict(
         self, provider: VerificationSourceConfig, result: SearchResult, category: EvidenceCategory
     ) -> Verdict | None:
-        if category != "fact_checker":
+        # Manchete em forma de pergunta ("É verdade que...?") não traz veredito
+        if category != "fact_checker" or "?" in result.title:
             return None
         content = normalize_text(f"{result.title} {result.excerpt[:VERDICT_SCAN_LENGTH]}")
         return self._match_verdict(content, self.verdict_patterns) or provider.default_verdict
@@ -219,13 +249,14 @@ class EvidenceService:
         relevance: float,
         entailment: float | None = None,
         denial: bool = False,
+        out_of_window: bool = False,
     ) -> Stance:
-        if verdict == "false":
-            return "contradicts"
-        if verdict == "true":
-            return "supports"
-        # Só reportagens de fontes com apuração própria sustentam; manchete que desmente algo, nunca
-        if category not in REPORTING_CATEGORIES or denial:
+        # Veredito sobre outro assunto não decide; assim a posição exibida é a mesma que pesa na decisão
+        if verdict is not None and verdict_matches_claim(relevance, entailment, self.settings):
+            return "contradicts" if verdict == "false" else "supports"
+        # Só reportagens de fontes com apuração própria sustentam; manchete que desmente algo ou
+        # publicada longe da data da notícia, nunca (o veredito acima vale sempre: boatos voltam a circular)
+        if category not in REPORTING_CATEGORIES or denial or out_of_window:
             return "neutral"
         # Com o modelo, a manchete precisa implicar a afirmação; sem ele, vale a semelhança de palavras.
         # O modelo nunca gera "contradiz": contradição só vem do veredito das agências de checagem
@@ -279,3 +310,13 @@ def canonical_url(url: str) -> str:
     host = (parsed.hostname or "").lower().removeprefix("www.")
     return f"{host}{parsed.path.rstrip('/')}"
 
+
+def verdict_matches_claim(relevance: float, entailment: float | None, settings: Settings) -> bool:
+    """A checagem trata da mesma afirmação: palavras suficientes em comum ou implicação pelo modelo.
+
+    "É falso que Tony Ramos morreu aos 89 anos em setembro de 2026 e morte foi anunciada na TV"
+    tem palavras demais para a relevância, mas o modelo reconhece a afirmação embutida.
+    """
+    if entailment is not None and entailment >= settings.nli_min_entailment:
+        return True
+    return relevance >= settings.decision_min_relevance

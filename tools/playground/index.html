@@ -331,7 +331,6 @@ function showValidationErrors(body) {
 }
 
 // ---------- Resultado ----------
-const STANCE_LABELS = { supports: "sustenta a afirmação", contradicts: "contradiz a afirmação", neutral: "relacionada, sem posição" };
 const CATEGORY_LABELS = {
   official: "fonte oficial", scientific: "instituição científica", fact_checker: "agência de checagem",
   news_outlet: "veículo jornalístico", unknown: "fonte não cadastrada",
@@ -352,43 +351,56 @@ function list(title, items) {
 
 function renderResult(analysis) {
   const result = $("#result");
+  const r = analysis.result, v = analysis.verification;
   result.replaceChildren();
 
   result.append(
     el("div", { class: "row", style: "justify-content:space-between" },
       el("h2", { style: "margin:0" }, `Análise #${analysis.id}`),
       el("span", { class: "muted" }, new Date(analysis.analyzed_at).toLocaleString("pt-BR"))),
-    el("div", { style: "margin-top:12px" },
-      el("span", { class: `badge ${analysis.classification}` }, analysis.classification_label)),
+    el("div", { class: "row", style: "margin-top:12px; gap:8px" },
+      el("span", { class: `badge ${r.classification}` }, r.label),
+      r.confidence_label ? el("span", { class: "muted" }, `Confiança ${r.confidence_label.toLowerCase()}`) : null),
+    el("p", { class: "muted" },
+      `${r.supporting_sources} fonte(s) independente(s) sustentam · ${r.contradicting_sources} contradizem · ` +
+      `${v.sources_checked.length} consultada(s)`),
     el("p", {}, el("strong", {}, "Afirmação analisada: "), analysis.claim || "(não identificada)"),
-    el("p", {}, el("strong", {}, "Justificativa: "), analysis.justification),
+    el("p", {}, el("strong", {}, "Justificativa: "), r.justification),
     el("div", { class: "muted" },
-      `Verificação: ${STATUS_LABELS[analysis.verification_status]}` +
-      ` · Consultados: ${analysis.sources_checked.join(", ") || "nenhum"}` +
-      (analysis.sources_failed.length ? ` · Indisponíveis: ${analysis.sources_failed.join(", ")}` : "") +
-      (analysis.keywords.length ? ` · Palavras-chave: ${analysis.keywords.join(", ")}` : "")),
+      `Verificação: ${STATUS_LABELS[v.status]}` +
+      ` · Consultados: ${v.sources_checked.join(", ") || "nenhum"}` +
+      (v.sources_failed.length ? ` · Indisponíveis: ${v.sources_failed.join(", ")}` : "") +
+      (v.keywords.length ? ` · Palavras-chave: ${v.keywords.join(", ")}` : "")),
   );
 
-  result.append(el("h2", { style: "margin-top:20px" }, "Evidências consultadas"));
-  if (!analysis.evidences.length) {
-    result.append(el("p", { class: "muted" }, "Nenhuma publicação correspondente encontrada."));
+  const groups = [
+    ["Sustentam a afirmação", analysis.evidences.supporting],
+    ["Contradizem a afirmação", analysis.evidences.contradicting],
+    ["Relacionadas (sem confirmar nem contradizer)", analysis.evidences.related],
+  ];
+  if (groups.every(([, items]) => !items.length)) {
+    result.append(el("h2", { style: "margin-top:20px" }, "Evidências"),
+      el("p", { class: "muted" }, "Nenhuma publicação correspondente encontrada."));
   }
-  for (const evidence of analysis.evidences) {
-    const details = [
-      evidence.source_name,
-      CATEGORY_LABELS[evidence.category],
-      STANCE_LABELS[evidence.stance],
-      formatDate(evidence.published_at),
-      evidence.independent ? null : "não conta como fonte independente",
-    ].filter(Boolean);
-    result.append(el("div", { class: "match" },
-      el("div", { class: "muted" }, details.join(" · ")),
-      safeLink(evidence.url, evidence.title),
-      evidence.excerpt ? el("div", { class: "muted", style: "margin-top:4px" }, evidence.excerpt) : null));
+  for (const [title, items] of groups) {
+    if (!items.length) continue;
+    result.append(el("h2", { style: "margin-top:20px" }, title));
+    for (const evidence of items) {
+      const details = [
+        evidence.source_name,
+        CATEGORY_LABELS[evidence.category],
+        formatDate(evidence.published_at),
+        evidence.independent ? null : "não conta como fonte independente",
+      ].filter(Boolean);
+      result.append(el("div", { class: "match" },
+        el("div", { class: "muted" }, details.join(" · ")),
+        safeLink(evidence.url, evidence.title),
+        evidence.excerpt ? el("div", { class: "muted", style: "margin-top:4px" }, evidence.excerpt) : null));
+    }
   }
 
-  result.append(...list("Limitações", analysis.limitations));
-  result.append(...list("Sinais de estilo (alertas, não decidem o resultado)", analysis.style_indicators));
+  result.append(...list("Limitações", analysis.warnings.limitations));
+  result.append(...list("Sinais de estilo (alertas, não decidem o resultado)", analysis.warnings.style_indicators));
 
   const json = el("pre");
   json.textContent = JSON.stringify(analysis, null, 2);
@@ -430,8 +442,8 @@ function renderHistory(page) {
       el("td", {}, item.id),
       el("td", {}, item.claim || item.news.title || el("span", { class: "muted" }, "(sem afirmação)"),
         el("div", { class: "muted" }, item.news.source || "")),
-      el("td", {}, el("span", { class: `badge ${item.classification}`, style: "font-size:12px; padding:3px 8px" },
-        item.classification_label)),
+      el("td", {}, el("span", { class: `badge ${item.result.classification}`, style: "font-size:12px; padding:3px 8px" },
+        item.result.label)),
       el("td", {}, STATUS_LABELS[item.verification_status]),
       el("td", {}, new Date(item.analyzed_at).toLocaleString("pt-BR")));
     row.addEventListener("click", () => openAnalysis(item.id));

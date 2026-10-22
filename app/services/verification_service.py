@@ -1,11 +1,11 @@
 """Pipeline: afirmação → busca → evidências → decisão → relatório (com cache)."""
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from app.core.cache import ThreadSafeTTLCache, build_cache_key
 from app.core.config import Settings
-from app.models.news_analysis_model import Classification, VerificationStatus
+from app.models.news_analysis_model import Classification, Confidence, VerificationStatus
 from app.services.analysis_rules_service import AnalysisRules
 from app.services.claim_extraction_service import ClaimExtractionService
 from app.services.decision_service import Decision, DecisionReason, DecisionService
@@ -23,6 +23,7 @@ VERIFICATION_DISABLED_NOTICE = "A busca de evidências está desativada neste am
 class VerificationReport:
     claim: str | None
     classification: Classification
+    confidence: Confidence
     justification: str
     limitations: tuple[str, ...]
     style_indicators: tuple[str, ...]
@@ -70,21 +71,24 @@ class VerificationService:
         title: str | None = None,
         url: str | None = None,
         source: str | None = None,
+        published_at: date | None = None,
         refresh: bool = False,
     ) -> VerificationReport:
-        cache_key = build_cache_key(text, title, url, source)
+        cache_key = build_cache_key(text, title, url, source, published_at.isoformat() if published_at else None)
         # refresh: reanálise pedida para buscar publicações novas, ignorando o cache
         cached = None if refresh else self.cache.get(cache_key)
         if cached is not None:
             return cached
 
-        report = self._run(text, title, url, source)
+        report = self._run(text, title, url, source, published_at)
         # Não guarda resultado incompleto (fonte fora do ar), para tentar de novo depois
         if report.verification_status not in (VerificationStatus.PARTIAL, VerificationStatus.FAILED):
             self.cache.set(cache_key, report)
         return report
 
-    def _run(self, text: str, title: str | None, url: str | None, source: str | None) -> VerificationReport:
+    def _run(
+        self, text: str, title: str | None, url: str | None, source: str | None, published_at: date | None
+    ) -> VerificationReport:
         style_indicators = self.detect_style(text, title)
         assessment = self.registry.assess(url, source)
 
@@ -102,7 +106,7 @@ class VerificationService:
         if outcome is None:
             return skipped(claim, "insufficient_text")
 
-        evidences = self.evidence_service.build_evidences(outcome, claim, title)
+        evidences = self.evidence_service.build_evidences(outcome, claim, title, reference_date=published_at)
         decision = self.decision_service.decide(evidences, outcome.sources_checked)
         return self._build(claim, decision, evidences, outcome, style_indicators, assessment, search_status(outcome))
 
@@ -132,6 +136,7 @@ class VerificationService:
         return VerificationReport(
             claim=claim,
             classification=decision.classification,
+            confidence=self.decision_service.confidence(decision, status),
             justification=report.justification,
             limitations=tuple(limitations),
             style_indicators=tuple(style_indicators),

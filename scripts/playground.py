@@ -1,10 +1,3 @@
-"""Serve a página de teste que simula o front-end em http://localhost:5173.
-
-Usa a mesma origem do Vite/React, já liberada em CORS_ORIGINS no .env.
-Uso (Linux, macOS ou Windows):
-    python scripts/playground.py [PORTA]
-"""
-
 import sys
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer

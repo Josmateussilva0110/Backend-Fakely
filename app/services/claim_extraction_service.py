@@ -1,5 +1,3 @@
-"""Identifica a afirmação principal de uma notícia."""
-
 import re
 
 from app.services.analysis_rules_service import AnalysisRules
