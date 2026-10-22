@@ -28,6 +28,12 @@ class VerificationStatus(str, Enum):
     SKIPPED = "skipped"
 
 
+class Confidence(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
 def _enum_column(enum: type[Enum], length: int) -> SAEnum:
     return SAEnum(enum, native_enum=False, length=length, values_callable=lambda e: [m.value for m in e])
 
@@ -53,6 +59,8 @@ class NewsAnalysis(Base):
         _enum_column(VerificationStatus, 20), nullable=False, index=True
     )
     source_assessment: Mapped[dict | None] = mapped_column(JSON)
+    # Vazio nas análises anteriores ao cálculo de confiança
+    confidence: Mapped[Confidence | None] = mapped_column(_enum_column(Confidence, 10))
     method: Mapped[str] = mapped_column(String(50), nullable=False)
     model_version: Mapped[str] = mapped_column(String(50), nullable=False)
     analyzed_at: Mapped[datetime] = mapped_column(

@@ -74,7 +74,8 @@ class NewsAnalysisService:
 
     def _analyze(self, news: News, refresh: bool = False) -> NewsAnalysis:
         report = self.verification_service.verify(
-            news.text, title=news.title, url=news.url, source=news.source, refresh=refresh
+            news.text, title=news.title, url=news.url, source=news.source,
+            published_at=news.published_at, refresh=refresh,
         )
         analysis = to_analysis(report)
         analysis.news = news
@@ -85,6 +86,7 @@ def to_analysis(report: VerificationReport) -> NewsAnalysis:
     return NewsAnalysis(
         claim=report.claim,
         classification=report.classification,
+        confidence=report.confidence,
         justification=report.justification,
         limitations=list(report.limitations),
         style_indicators=list(report.style_indicators),
