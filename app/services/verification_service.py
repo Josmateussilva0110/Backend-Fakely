@@ -98,7 +98,7 @@ class VerificationService:
 
         claim = self.claim_service.extract(text, title)
         if claim is None:
-            return skipped(None, "insufficient_text")
+            return skipped(None, "opinion" if self.claim_service.is_opinion(text) else "insufficient_text")
         if not self.search_enabled:
             return skipped(claim, "verification_unavailable")
         outcome = self.search_service.search(claim, title)

@@ -68,6 +68,11 @@ class ReportService:
                 )
             case "verification_unavailable":
                 return "Não foi possível consultar as fontes externas, então a verificação não foi concluída."
+            case "opinion":
+                return (
+                    "O texto expressa uma opinião, não um fato que possa ser confirmado ou contradito "
+                    "pelas fontes consultadas."
+                )
             case _:
                 return "O texto é curto demais para identificar uma afirmação verificável."
 

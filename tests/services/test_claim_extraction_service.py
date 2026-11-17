@@ -1,7 +1,24 @@
 import pytest
 
+from app.core.config import get_settings
+from app.services.analysis_rules_service import load_analysis_rules
 from app.services.claim_extraction_service import ClaimExtractionService
+from app.services.evidence_search_service import EvidenceSearchService
+from app.services.text_processing_service import normalize_text
+from tests.claim_dataset import (
+    CATEGORIES,
+    VERACITIES,
+    compute_metrics,
+    evaluate_case,
+    format_report,
+    format_summary,
+    load_cases,
+)
 from tests.conftest import SENSATIONAL_TEXT
+
+# Piso do conjunto de avaliação (antes das melhorias: 72% e 55%); suba ao melhorar
+MIN_DATASET_CLAIM_ACCURACY = 0.95
+MIN_DATASET_KEYWORD_RECALL = 0.69
 
 
 @pytest.fixture
@@ -37,3 +54,91 @@ def test_short_text_has_no_claim(claim_service):
 def test_claim_is_truncated(rules, settings):
     service = ClaimExtractionService(rules, settings.min_words, max_length=20)
     assert len(service.extract("Palavra " * 50)) == 20
+
+
+def test_question_becomes_a_statement(claim_service):
+    claim = claim_service.extract("É verdade que o governo vai taxar o Pix a partir de janeiro?")
+    assert claim == "O governo vai taxar o Pix a partir de janeiro"
+
+
+def test_question_drops_the_alternative(claim_service):
+    claim = claim_service.extract("O avião que caiu em Vinhedo era da Voepass ou da Latam?")
+    assert claim == "O avião que caiu em Vinhedo era da Voepass"
+
+
+def test_alarm_label_before_colon_is_removed(claim_service):
+    claim = claim_service.extract("Atenção aposentados: o governo vai confiscar a poupança na segunda.")
+    assert claim == "O governo vai confiscar a poupança na segunda."
+
+
+def test_label_without_alarm_is_kept(claim_service):
+    claim = claim_service.extract("Agora é lei: celular está proibido nas escolas do Brasil.")
+    assert claim == "Agora é lei: celular está proibido nas escolas do Brasil."
+
+
+def test_vague_title_loses_to_the_body(claim_service):
+    text = "O papa Francisco morreu nesta segunda-feira, aos 88 anos, no Vaticano."
+    assert claim_service.extract(text, "Você não vai acreditar no que aconteceu hoje") == text
+
+
+def test_title_without_name_or_number_loses_to_the_body(claim_service):
+    text = "A CBF confirmou Carlo Ancelotti como técnico da seleção brasileira."
+    assert claim_service.extract(text, "Ninguém esperava essa reviravolta no futebol") == text
+
+
+def test_vague_title_is_used_when_body_is_too_short(claim_service):
+    assert claim_service.extract("Veja.", "Ninguém esperava essa reviravolta no futebol") is not None
+
+
+def test_shouting_text_ignores_the_alarm_opening(claim_service):
+    claim = claim_service.extract("URGENTE: STF CONDENA BOLSONARO A 27 ANOS DE PRISÃO. ACABOU DE SAIR O RESULTADO")
+    assert claim == "STF CONDENA BOLSONARO A 27 ANOS DE PRISÃO."
+
+
+def test_opinion_has_no_claim(claim_service):
+    text = "Na minha opinião o Ancelotti não vai dar certo na seleção brasileira."
+    assert claim_service.extract(text) is None
+    assert claim_service.is_opinion(text)
+
+
+def test_fact_next_to_an_opinion_is_kept(claim_service):
+    text = "Acho um absurdo tudo isso. O governo federal vai taxar as compras internacionais em 20%."
+    assert claim_service.extract(text) == "O governo federal vai taxar as compras internacionais em 20%."
+    assert not claim_service.is_opinion(text)
+
+
+# Conjunto de avaliação com textos reais (tests/data/claim_extraction_cases.json).
+# Para ver o relatório por categoria: pytest tests/services/test_claim_extraction_service.py -k dataset -s
+@pytest.fixture(scope="module")
+def dataset_results():
+    settings = get_settings()
+    rules = load_analysis_rules(settings.analysis_rules_path)
+    claim_service = ClaimExtractionService(rules, settings.min_words, settings.claim_max_length)
+    search_service = EvidenceSearchService(settings, rules.stopwords, providers=[], acronyms=rules.acronyms)
+    try:
+        return [evaluate_case(case, claim_service, search_service, rules.stopwords) for case in load_cases()]
+    finally:
+        search_service.close()
+
+
+def test_dataset_is_well_formed():
+    cases = load_cases()
+    assert len(cases) >= 100
+    assert len({case.id for case in cases}) == len(cases)
+    assert {case.category for case in cases} == set(CATEGORIES)
+    for case in cases:
+        assert case.veracity in VERACITIES, case.id
+        assert case.checkable == (case.veracity != "opinion"), case.id
+        assert bool(case.expected_keywords) == case.checkable, case.id
+        # Palavras-chave esperadas já normalizadas, como as devolvidas pela busca
+        assert all(k == normalize_text(k) for k in case.expected_keywords), case.id
+
+
+def test_dataset_metrics_do_not_regress(dataset_results):
+    """Piso com o resultado atual: ao melhorar a interpretação, suba os valores."""
+    metrics = compute_metrics(dataset_results)
+    # Na saída só a tabela; os erros caso a caso aparecem quando o piso é violado
+    print("\n" + format_summary(dataset_results))
+    report = format_report(dataset_results)
+    assert metrics.claim_accuracy >= MIN_DATASET_CLAIM_ACCURACY, report
+    assert metrics.keyword_recall >= MIN_DATASET_KEYWORD_RECALL, report
