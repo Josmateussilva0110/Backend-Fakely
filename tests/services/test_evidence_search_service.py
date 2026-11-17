@@ -31,6 +31,25 @@ def test_extract_keywords_prioritizes_proper_nouns(settings, verification_config
     assert "fauci" in keywords
 
 
+def test_extract_keywords_keeps_acronyms(settings, verification_config, rules):
+    service = EvidenceSearchService(settings, rules.stopwords, [], acronyms=rules.acronyms)
+    keywords = service.extract_keywords("o stf condenou o bolsonaro e o governo vai taxar o pix")
+    assert keywords[:2] == ["stf", "pix"]
+
+
+def test_extract_keywords_detects_unknown_uppercase_acronym(settings, verification_config, rules):
+    service = EvidenceSearchService(settings, rules.stopwords, [], acronyms=rules.acronyms)
+    keywords = service.extract_keywords("As chuvas foram provocadas pelo HAARP, segundo o papa Leão XIV")
+    assert keywords[0] == "haarp"
+    assert "xiv" not in keywords
+
+
+def test_extract_keywords_ignores_case_in_shouting_text(settings, verification_config, rules):
+    service = EvidenceSearchService(settings, rules.stopwords, [], acronyms=rules.acronyms)
+    keywords = service.extract_keywords("URGENTE: STF CONDENA BOLSONARO A 27 ANOS DE PRISÃO")
+    assert keywords == ["stf", "bolsonaro", "condena", "prisao"]
+
+
 def test_collects_results_per_source(settings, verification_config, rules):
     lupa = FakeSearchClient([make_result("É falso que a ivermectina tenha 70% de eficácia", "https://agencialupa.org/x")])
     outcome = build_service(settings, verification_config, rules, {"lupa": lupa}).search(USER_CLAIM, USER_TITLE)

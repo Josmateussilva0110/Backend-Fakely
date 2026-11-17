@@ -80,7 +80,9 @@ def build_verification_service(
         settings,
         rules,
         registry,
-        search_service=EvidenceSearchService.build(settings, config, rules.stopwords, http_client),
+        search_service=EvidenceSearchService.build(
+            settings, config, rules.stopwords, http_client, acronyms=rules.acronyms
+        ),
         evidence_service=EvidenceService(
             settings, config, registry, rules.stopwords, entailment_model=load_entailment_model(settings)
         ),

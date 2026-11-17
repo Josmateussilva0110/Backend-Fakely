@@ -16,6 +16,12 @@ URL_PATTERN = re.compile(r"https?://\S+|www\.\S+")
 # Palavras com acentos e maiúsculas preservados (antes da normalização)
 WORD_PATTERN = re.compile(r"\w+(?:[-']\w+)*")
 _REPEATED_PUNCTUATION_PATTERN = re.compile(r"[!?]{2,}")
+# Acima dessa proporção de maiúsculas o texto está "gritando" e a caixa não indica nome próprio
+SHOUTING_UPPERCASE_RATIO = 0.7
+ACRONYM_MIN_LENGTH = 2
+ACRONYM_MAX_LENGTH = 5
+# "Leão XIV", "século XX": algarismo romano não é sigla
+_ROMAN_NUMERAL_PATTERN = re.compile(r"[IVXLCDM]+")
 
 
 @dataclass(frozen=True)
@@ -42,6 +48,24 @@ def normalize_text(text: str) -> str:
 
 def tokenize(normalized_text: str) -> list[str]:
     return _TOKEN_PATTERN.findall(normalized_text)
+
+
+def is_shouting(text: str) -> bool:
+    letters = [char for char in text if char.isalpha()]
+    return bool(letters) and sum(char.isupper() for char in letters) / len(letters) > SHOUTING_UPPERCASE_RATIO
+
+
+def is_acronym(word: str, known: frozenset[str], shouting: bool) -> bool:
+    """Sigla conhecida em qualquer caixa, ou palavra curta toda em maiúsculas num texto que não grita."""
+    if normalize_text(word) in known:
+        return True
+    return (
+        not shouting
+        and ACRONYM_MIN_LENGTH <= len(word) <= ACRONYM_MAX_LENGTH
+        and word.isalpha()
+        and word.isupper()
+        and not _ROMAN_NUMERAL_PATTERN.fullmatch(word)
+    )
 
 
 def find_terms(normalized_text: str, terms: frozenset[str]) -> tuple[str, ...]:
