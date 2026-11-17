@@ -11,12 +11,16 @@ from app.core.config import Settings
 from app.integrations.folha_search_client import FolhaSearchClient
 from app.integrations.search_client import HttpFetcher, SearchClient, SearchError, SearchResult
 from app.integrations.wordpress_search_client import WordpressSearchClient
-from app.services.text_processing_service import WORD_PATTERN, normalize_text, tokenize
+from app.services.text_processing_service import WORD_PATTERN, is_acronym, is_shouting, normalize_text, tokenize
 from app.services.verification_config_service import VerificationConfig, VerificationSourceConfig
 
 logger = logging.getLogger(__name__)
 
 MIN_KEYWORD_LENGTH = 4
+# Ordem de especificidade das palavras-chave
+ACRONYM_RANK = 2
+PROPER_NOUN_RANK = 1
+COMMON_WORD_RANK = 0
 
 
 @dataclass(frozen=True)
@@ -41,19 +45,31 @@ class SearchProvider:
 
 
 class EvidenceSearchService:
-    def __init__(self, settings: Settings, stopwords: frozenset[str], providers: list[SearchProvider]):
+    def __init__(
+        self,
+        settings: Settings,
+        stopwords: frozenset[str],
+        providers: list[SearchProvider],
+        acronyms: frozenset[str] = frozenset(),
+    ):
         self.settings = settings
         self.stopwords = stopwords
         self.providers = providers
+        self.acronyms = acronyms
         self.executor = ThreadPoolExecutor(max_workers=max(len(providers), 1), thread_name_prefix="search")
 
     @classmethod
     def build(
-        cls, settings: Settings, config: VerificationConfig, stopwords: frozenset[str], http_client: httpx.Client
+        cls,
+        settings: Settings,
+        config: VerificationConfig,
+        stopwords: frozenset[str],
+        http_client: httpx.Client,
+        acronyms: frozenset[str] = frozenset(),
     ) -> "EvidenceSearchService":
         fetcher = HttpFetcher(http_client, settings.verification_max_response_bytes)
         providers = [SearchProvider(source, cls._build_client(source, fetcher)) for source in config.sources]
-        return cls(settings, stopwords, providers)
+        return cls(settings, stopwords, providers, acronyms)
 
     @staticmethod
     def _build_client(source: VerificationSourceConfig, fetcher: HttpFetcher) -> SearchClient:
@@ -105,19 +121,22 @@ class EvidenceSearchService:
     def extract_keywords(self, claim: str, title: str | None = None) -> list[str]:
         """Palavras mais específicas da afirmação, completadas pelo título.
 
-        Retorna em ordem de especificidade: nomes próprios (inicial maiúscula) primeiro,
-        depois as palavras mais longas.
+        Retorna em ordem de especificidade: siglas (STF, Pix), nomes próprios (inicial maiúscula)
+        e depois as palavras mais longas.
         """
-        candidates: dict[str, bool] = {}
+        candidates: dict[str, int] = {}
         for chunk in (claim, title):
+            # Texto todo em maiúsculas: a caixa não distingue nome próprio
+            shouting = is_shouting(chunk or "")
             for word in WORD_PATTERN.findall(chunk or ""):
                 token = normalize_text(word)
-                if (
-                    len(token) < MIN_KEYWORD_LENGTH or token.isdigit()
-                    or token in self.stopwords or token in candidates
-                ):
+                if token.isdigit() or token in self.stopwords or token in candidates:
                     continue
-                candidates[token] = word[0].isupper()
+                if is_acronym(word, self.acronyms, shouting):
+                    candidates[token] = ACRONYM_RANK
+                elif len(token) >= MIN_KEYWORD_LENGTH:
+                    proper_noun = word[0].isupper() and not shouting
+                    candidates[token] = PROPER_NOUN_RANK if proper_noun else COMMON_WORD_RANK
             if len(candidates) >= self.settings.verification_max_keywords:
                 break
 

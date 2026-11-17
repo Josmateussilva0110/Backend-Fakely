@@ -103,6 +103,14 @@ pytest                             # automatizados (sem banco e sem internet)
 ruff check .                       # lint (imports sem uso, ordem, estilo)
 ```
 
+**Interpretação do texto do usuário:** 100 casos com fatos reais e boatos que circularam (mensagens de WhatsApp, perguntas, textos em maiúsculas, opiniões), em `tests/data/claim_extraction_cases.json`. Mostra quanto a afirmação e as palavras-chave da busca acertam em cada categoria:
+
+```bash
+pytest tests/services/test_claim_extraction_service.py -k dataset -s
+```
+
+O teste falha, listando os erros caso a caso, se o resultado ficar abaixo do piso definido em `tests/services/test_claim_extraction_service.py`. Ao melhorar a interpretação, suba esse piso.
+
 Para testar requisição por requisição, use a documentação interativa em http://localhost:8000/docs.
 
 ## Produção

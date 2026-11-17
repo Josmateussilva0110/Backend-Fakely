@@ -1,0 +1,1002 @@
+[
+  {
+    "id": "news-bolsonaro-condenado-stf",
+    "category": "news",
+    "event": "STF condena Bolsonaro no julgamento da trama golpista (11/09/2025)",
+    "veracity": "true",
+    "title": "STF condena Bolsonaro a 27 anos e 3 meses de prisão por trama golpista",
+    "text": "A Primeira Turma do Supremo Tribunal Federal condenou nesta quinta-feira o ex-presidente Jair Bolsonaro a 27 anos e 3 meses de prisão. O placar foi de 4 votos a 1. A defesa disse que vai recorrer.",
+    "expected_claim": "STF condena Bolsonaro a 27 anos e 3 meses de prisão por trama golpista",
+    "expected_keywords": ["stf", "bolsonaro", "condena"]
+  },
+  {
+    "id": "news-isencao-ir-5-mil",
+    "category": "news",
+    "event": "Sanção da lei que isenta do IR quem ganha até R$ 5 mil (novembro de 2025)",
+    "veracity": "true",
+    "title": "Lula sanciona isenção do Imposto de Renda para quem ganha até R$ 5 mil",
+    "text": "O presidente Luiz Inácio Lula da Silva sancionou a lei que isenta do Imposto de Renda quem recebe até R$ 5 mil por mês. A mudança vale a partir de 2026 e é compensada por uma cobrança mínima sobre altas rendas.",
+    "expected_claim": "Lula sanciona isenção do Imposto de Renda para quem ganha até R$ 5 mil",
+    "expected_keywords": ["isencao", "imposto", "renda"]
+  },
+  {
+    "id": "news-tarifa-trump-50",
+    "category": "news",
+    "event": "Trump anuncia tarifa de 50% sobre produtos brasileiros (09/07/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "O presidente dos Estados Unidos, Donald Trump, anunciou uma tarifa de 50% sobre produtos importados do Brasil. Em carta publicada nas redes sociais, ele citou o julgamento de Jair Bolsonaro. O governo brasileiro disse que pode responder com base na Lei da Reciprocidade.",
+    "expected_claim": "O presidente dos Estados Unidos, Donald Trump, anunciou uma tarifa de 50% sobre produtos importados do Brasil.",
+    "expected_keywords": ["trump", "tarifa", "brasil"]
+  },
+  {
+    "id": "news-morte-papa-francisco",
+    "category": "news",
+    "event": "Morte do papa Francisco (21/04/2025)",
+    "veracity": "true",
+    "title": "Papa Francisco morre aos 88 anos no Vaticano",
+    "text": "O Vaticano anunciou a morte do papa Francisco na manhã desta segunda-feira de Páscoa. Jorge Mario Bergoglio liderava a Igreja Católica desde 2013.",
+    "expected_claim": "Papa Francisco morre aos 88 anos no Vaticano",
+    "expected_keywords": ["papa", "francisco", "morre"]
+  },
+  {
+    "id": "news-eleicao-leao-xiv",
+    "category": "news",
+    "event": "Eleição de Robert Prevost como papa Leão XIV (08/05/2025)",
+    "veracity": "true",
+    "title": "Robert Prevost é eleito papa e adota o nome de Leão XIV",
+    "text": "O cardeal americano Robert Francis Prevost foi eleito o novo papa no segundo dia do conclave. Ele é o primeiro pontífice nascido nos Estados Unidos.",
+    "expected_claim": "Robert Prevost é eleito papa e adota o nome de Leão XIV",
+    "expected_keywords": ["prevost", "papa", "leao"]
+  },
+  {
+    "id": "news-oscar-ainda-estou-aqui",
+    "category": "news",
+    "event": "Ainda Estou Aqui vence o Oscar de melhor filme internacional (02/03/2025)",
+    "veracity": "true",
+    "title": "'Ainda Estou Aqui' ganha o Oscar de melhor filme internacional",
+    "text": "O longa dirigido por Walter Salles venceu o Oscar de melhor filme internacional na cerimônia realizada em Los Angeles. É a primeira estatueta do Brasil nessa categoria.",
+    "expected_claim": "'Ainda Estou Aqui' ganha o Oscar de melhor filme internacional",
+    "expected_keywords": ["oscar", "filme", "internacional"]
+  },
+  {
+    "id": "news-queda-aviao-voepass",
+    "category": "news",
+    "event": "Queda do avião da Voepass em Vinhedo (09/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Um avião da Voepass que seguia de Cascavel para Guarulhos caiu em Vinhedo, no interior de São Paulo. Todas as 62 pessoas a bordo morreram. O Cenipa investiga as causas do acidente.",
+    "expected_claim": "Um avião da Voepass que seguia de Cascavel para Guarulhos caiu em Vinhedo, no interior de São Paulo.",
+    "expected_keywords": ["voepass", "vinhedo", "aviao"]
+  },
+  {
+    "id": "news-aeroporto-salgado-filho",
+    "category": "news",
+    "event": "Fechamento do aeroporto de Porto Alegre nas enchentes do RS (maio de 2024)",
+    "veracity": "true",
+    "title": "Aeroporto Salgado Filho suspende operações por tempo indeterminado após enchente",
+    "text": "A pista e o terminal do aeroporto de Porto Alegre foram tomados pela água após a cheia do Guaíba. Os voos foram transferidos para outras cidades do Rio Grande do Sul.",
+    "expected_claim": "Aeroporto Salgado Filho suspende operações por tempo indeterminado após enchente",
+    "expected_keywords": ["aeroporto", "salgado", "enchente"]
+  },
+  {
+    "id": "news-rebeca-ouro-solo",
+    "category": "news",
+    "event": "Rebeca Andrade ganha o ouro no solo em Paris 2024 (05/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Rebeca Andrade conquistou a medalha de ouro no solo nos Jogos Olímpicos de Paris. Com o resultado, ela se tornou a maior medalhista olímpica da história do Brasil.",
+    "expected_claim": "Rebeca Andrade conquistou a medalha de ouro no solo nos Jogos Olímpicos de Paris.",
+    "expected_keywords": ["rebeca", "andrade", "ouro"]
+  },
+  {
+    "id": "news-suspensao-x",
+    "category": "news",
+    "event": "Moraes determina a suspensão do X no Brasil (30/08/2024)",
+    "veracity": "true",
+    "title": "Moraes determina suspensão do X em todo o Brasil",
+    "text": "O ministro Alexandre de Moraes, do STF, mandou suspender a rede social X no país depois que a empresa deixou de indicar um representante legal. A Anatel notificou as operadoras para cumprir a decisão.",
+    "expected_claim": "Moraes determina suspensão do X em todo o Brasil",
+    "expected_keywords": ["moraes", "suspensao", "brasil"]
+  },
+  {
+    "id": "news-selic-15",
+    "category": "news",
+    "event": "Copom eleva a Selic para 15% ao ano (18/06/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "O Comitê de Política Monetária do Banco Central elevou a taxa Selic para 15% ao ano. Foi a sétima alta seguida dos juros básicos da economia.",
+    "expected_claim": "O Comitê de Política Monetária do Banco Central elevou a taxa Selic para 15% ao ano.",
+    "expected_keywords": ["selic", "banco", "central"]
+  },
+  {
+    "id": "news-fraude-inss",
+    "category": "news",
+    "event": "Operação Sem Desconto contra descontos indevidos no INSS (23/04/2025)",
+    "veracity": "true",
+    "title": "PF deflagra operação contra descontos indevidos em aposentadorias do INSS",
+    "text": "A Polícia Federal e a CGU deflagraram a Operação Sem Desconto, que investiga cobranças não autorizadas de associações em benefícios de aposentados e pensionistas. O presidente do INSS foi afastado do cargo.",
+    "expected_claim": "PF deflagra operação contra descontos indevidos em aposentadorias do INSS",
+    "expected_keywords": ["inss", "descontos", "aposentadorias"]
+  },
+  {
+    "id": "news-ancelotti-selecao",
+    "category": "news",
+    "event": "CBF anuncia Carlo Ancelotti como técnico da seleção (12/05/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "A CBF anunciou Carlo Ancelotti como novo técnico da seleção brasileira. O italiano deixa o Real Madrid e assume a equipe para as Eliminatórias e a Copa do Mundo de 2026.",
+    "expected_claim": "A CBF anunciou Carlo Ancelotti como novo técnico da seleção brasileira.",
+    "expected_keywords": ["ancelotti", "cbf", "selecao"]
+  },
+  {
+    "id": "news-apagao-peninsula-iberica",
+    "category": "news",
+    "event": "Apagão na Espanha e em Portugal (28/04/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Um apagão de grandes proporções deixou Espanha e Portugal sem energia elétrica durante horas. Metrôs pararam, semáforos se apagaram e aeroportos tiveram voos cancelados.",
+    "expected_claim": "Um apagão de grandes proporções deixou Espanha e Portugal sem energia elétrica durante horas.",
+    "expected_keywords": ["apagao", "espanha", "portugal"]
+  },
+  {
+    "id": "news-mapa-da-fome",
+    "category": "news",
+    "event": "Relatório da FAO tira o Brasil do Mapa da Fome (28/07/2025)",
+    "veracity": "true",
+    "title": "Brasil sai do Mapa da Fome da ONU",
+    "text": "Relatório da FAO divulgado nesta segunda-feira mostra que menos de 2,5% da população brasileira está em situação de subalimentação. O país havia voltado ao mapa em 2022.",
+    "expected_claim": "Brasil sai do Mapa da Fome da ONU",
+    "expected_keywords": ["mapa", "fome", "onu"]
+  },
+  {
+    "id": "news-magnitsky-moraes",
+    "category": "news",
+    "event": "EUA aplicam a Lei Magnitsky contra Alexandre de Moraes (30/07/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "O Departamento do Tesouro dos Estados Unidos aplicou sanções da Lei Magnitsky contra o ministro Alexandre de Moraes, do Supremo Tribunal Federal. A medida bloqueia eventuais bens do ministro em território americano.",
+    "expected_claim": "O Departamento do Tesouro dos Estados Unidos aplicou sanções da Lei Magnitsky contra o ministro Alexandre de Moraes, do Supremo Tribunal Federal.",
+    "expected_keywords": ["magnitsky", "moraes", "sancoes"]
+  },
+  {
+    "id": "news-metanol-sao-paulo",
+    "category": "news",
+    "event": "Intoxicações por metanol em bebidas adulteradas em São Paulo (setembro/outubro de 2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "O Ministério da Saúde confirmou casos de intoxicação por metanol após o consumo de bebidas alcoólicas adulteradas em São Paulo. A polícia investiga distribuidoras que venderam destilados falsificados.",
+    "expected_claim": "O Ministério da Saúde confirmou casos de intoxicação por metanol após o consumo de bebidas alcoólicas adulteradas em São Paulo.",
+    "expected_keywords": ["metanol", "intoxicacao", "bebidas"]
+  },
+  {
+    "id": "news-operacao-alemao-penha",
+    "category": "news",
+    "event": "Operação policial nos complexos do Alemão e da Penha, no Rio (28/10/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Uma operação policial nos complexos do Alemão e da Penha, na zona norte do Rio de Janeiro, deixou mais de cem mortos. Foi a ação policial mais letal da história do estado.",
+    "expected_claim": "Uma operação policial nos complexos do Alemão e da Penha, na zona norte do Rio de Janeiro, deixou mais de cem mortos.",
+    "expected_keywords": ["operacao", "alemao", "penha"]
+  },
+  {
+    "id": "news-taxa-das-blusinhas",
+    "category": "news",
+    "event": "Sanção da taxação de compras internacionais de até US$ 50 (junho de 2024)",
+    "veracity": "true",
+    "title": "Lula sanciona taxação de compras internacionais de até 50 dólares",
+    "text": "A lei cria um imposto de importação de 20% para compras de até US$ 50 feitas em sites estrangeiros, como Shein e Shopee. A medida ficou conhecida como taxa das blusinhas.",
+    "expected_claim": "Lula sanciona taxação de compras internacionais de até 50 dólares",
+    "expected_keywords": ["taxacao", "compras", "internacionais"]
+  },
+  {
+    "id": "news-cirurgia-lula",
+    "category": "news",
+    "event": "Cirurgia de Lula para drenar hemorragia intracraniana (10/12/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "O presidente Lula passou por uma cirurgia de emergência no Hospital Sírio-Libanês, em São Paulo, para drenar uma hemorragia intracraniana. O sangramento foi consequência de uma queda que ele sofreu em outubro no Palácio da Alvorada.",
+    "expected_claim": "O presidente Lula passou por uma cirurgia de emergência no Hospital Sírio-Libanês, em São Paulo, para drenar uma hemorragia intracraniana.",
+    "expected_keywords": ["lula", "cirurgia", "hemorragia"]
+  },
+  {
+    "id": "whatsapp-taxacao-pix",
+    "category": "whatsapp",
+    "event": "Boato da taxação do Pix após norma da Receita Federal, depois revogada (janeiro de 2025)",
+    "veracity": "false",
+    "title": null,
+    "text": "URGENTE pessoal!!! A partir de agora o governo vai taxar o Pix. Toda transferência acima de 5 mil vai pagar imposto pra Receita. Compartilhem com todos os grupos antes que apaguem!!",
+    "expected_claim": "O governo vai taxar o Pix",
+    "expected_keywords": ["pix", "taxar", "receita"]
+  },
+  {
+    "id": "whatsapp-doacoes-rs-barradas",
+    "category": "whatsapp",
+    "event": "Boato de caminhões de doações ao RS barrados por falta de nota fiscal, desmentido pela Receita (maio de 2024)",
+    "veracity": "false",
+    "title": null,
+    "text": "Gente olha isso 😡 os caminhões com doação pro Rio Grande do Sul estão sendo parados na estrada pela fiscalização porque não tem nota fiscal. Absurdo! Repassem",
+    "expected_claim": "Caminhões com doações para o Rio Grande do Sul estão sendo parados pela fiscalização por falta de nota fiscal",
+    "expected_keywords": ["caminhoes", "doacao", "fiscal"]
+  },
+  {
+    "id": "whatsapp-haarp-chuvas-rs",
+    "category": "whatsapp",
+    "event": "Boato de que o HAARP causou as enchentes do RS (maio de 2024)",
+    "veracity": "false",
+    "title": null,
+    "text": "Vocês não vão acreditar, as chuvas no Rio Grande do Sul foram provocadas pelo HAARP, a antena americana que controla o clima. A mídia esconde! Divulguem",
+    "expected_claim": "As chuvas no Rio Grande do Sul foram provocadas pelo HAARP",
+    "expected_keywords": ["haarp", "chuvas"]
+  },
+  {
+    "id": "whatsapp-urnas-fraudadas",
+    "category": "whatsapp",
+    "event": "Boatos de fraude nas urnas eletrônicas na eleição de 2022",
+    "veracity": "false",
+    "title": null,
+    "text": "Acorda Brasil! Um técnico do TSE confessou que as urnas eletrônicas foram programadas para dar vitória ao Lula em 2022. Ninguém está falando disso.",
+    "expected_claim": "Um técnico do TSE confessou que as urnas eletrônicas foram programadas para dar vitória ao Lula em 2022",
+    "expected_keywords": ["urnas", "tse", "lula"]
+  },
+  {
+    "id": "whatsapp-vacina-chip",
+    "category": "whatsapp",
+    "event": "Boato de chip de rastreamento nas vacinas contra a Covid (2020-2021)",
+    "veracity": "false",
+    "title": null,
+    "text": "Cuidado!!! A vacina da Covid tem um chip que rastreia as pessoas pelo 5G. Não deixem seus filhos tomarem. Repasse para salvar vidas",
+    "expected_claim": "A vacina da Covid tem um chip que rastreia as pessoas pelo 5G",
+    "expected_keywords": ["vacina", "covid", "chip"]
+  },
+  {
+    "id": "whatsapp-vacina-aids",
+    "category": "whatsapp",
+    "event": "Boato de que a vacina da Covid causa AIDS (outubro de 2021)",
+    "veracity": "false",
+    "title": null,
+    "text": "Olha o que saiu: quem tomou duas doses da vacina da Covid está desenvolvendo AIDS muito mais rápido, foi relatório do governo inglês. Compartilhe",
+    "expected_claim": "Quem tomou duas doses da vacina da Covid está desenvolvendo AIDS",
+    "expected_keywords": ["vacina", "covid", "aids"]
+  },
+  {
+    "id": "whatsapp-lula-fechar-igrejas",
+    "category": "whatsapp",
+    "event": "Boato de que Lula fecharia igrejas se eleito (eleição de 2022)",
+    "veracity": "false",
+    "title": null,
+    "text": "Gente se o Lula ganhar ele vai fechar as igrejas evangélicas, já está no plano de governo dele!!! Repassem pra família toda",
+    "expected_claim": "Lula vai fechar as igrejas evangélicas se ganhar a eleição",
+    "expected_keywords": ["lula", "igrejas", "fechar"]
+  },
+  {
+    "id": "whatsapp-ivermectina-cura",
+    "category": "whatsapp",
+    "event": "Boato de que a ivermectina cura a Covid (2020-2021)",
+    "veracity": "false",
+    "title": null,
+    "text": "Meu primo é médico e falou que ivermectina cura covid em 48 horas, só que a mídia não mostra. Passa adiante",
+    "expected_claim": "Ivermectina cura covid em 48 horas",
+    "expected_keywords": ["ivermectina", "covid", "cura"]
+  },
+  {
+    "id": "whatsapp-confisco-poupanca",
+    "category": "whatsapp",
+    "event": "Boato recorrente de confisco da poupança pelo governo Lula (2023)",
+    "veracity": "false",
+    "title": null,
+    "text": "Atenção aposentados: o governo vai confiscar a poupança igual o Collor fez, saquem o dinheiro antes de segunda. Compartilhe!!",
+    "expected_claim": "O governo vai confiscar a poupança",
+    "expected_keywords": ["confiscar", "poupanca", "governo"]
+  },
+  {
+    "id": "whatsapp-papa-apoia-trump",
+    "category": "whatsapp",
+    "event": "Boato de que o papa Francisco apoiou Trump (eleição americana de 2016)",
+    "veracity": "false",
+    "title": null,
+    "text": "Bomba!!! O papa Francisco declarou apoio a Donald Trump para presidente dos Estados Unidos. Ninguém está falando disso",
+    "expected_claim": "O papa Francisco declarou apoio a Donald Trump para presidente dos Estados Unidos",
+    "expected_keywords": ["papa", "francisco", "trump"]
+  },
+  {
+    "id": "whatsapp-5g-coronavirus",
+    "category": "whatsapp",
+    "event": "Boato de que antenas 5G espalham o coronavírus (2020)",
+    "veracity": "false",
+    "title": null,
+    "text": "Pesquisem! As antenas de 5G espalham o coronavírus, por isso a doença começou em Wuhan. Repasse",
+    "expected_claim": "As antenas de 5G espalham o coronavírus",
+    "expected_keywords": ["antenas", "coronavirus"]
+  },
+  {
+    "id": "whatsapp-mortes-metanol",
+    "category": "whatsapp",
+    "event": "Mortes por metanol em bebidas adulteradas em São Paulo (setembro/outubro de 2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Pessoal cuidado com bebida destilada, já confirmaram mortes por metanol em São Paulo por causa de gin e vodka falsificados. Comprem só em lugar confiável",
+    "expected_claim": "Confirmaram mortes por metanol em São Paulo causadas por gin e vodka falsificados",
+    "expected_keywords": ["metanol", "mortes", "falsificados"]
+  },
+  {
+    "id": "whatsapp-vacina-dengue-sus",
+    "category": "whatsapp",
+    "event": "Início da vacinação contra a dengue no SUS para crianças de 10 a 14 anos (fevereiro de 2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Gente a vacina da dengue chegou no SUS!! Por enquanto é só pra criança de 10 a 14 anos, levem os filhos no posto",
+    "expected_claim": "A vacina da dengue chegou no SUS para crianças de 10 a 14 anos",
+    "expected_keywords": ["vacina", "dengue", "sus"]
+  },
+  {
+    "id": "whatsapp-morte-silvio-santos",
+    "category": "whatsapp",
+    "event": "Morte de Silvio Santos no Hospital Albert Einstein (17/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Acabou de sair, o Silvio Santos morreu hoje de manhã no hospital Albert Einstein 😢 que tristeza",
+    "expected_claim": "Silvio Santos morreu no hospital Albert Einstein",
+    "expected_keywords": ["silvio", "santos", "morreu"]
+  },
+  {
+    "id": "whatsapp-multa-vpn-x",
+    "category": "whatsapp",
+    "event": "Multa de R$ 50 mil por dia para quem usasse VPN para acessar o X (agosto de 2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Atenção quem usar VPN pra entrar no X pode levar multa de 50 mil por dia, foi o Moraes que decidiu",
+    "expected_claim": "Quem usar VPN para acessar o X pode levar multa de 50 mil por dia, por decisão de Moraes",
+    "expected_keywords": ["vpn", "multa", "moraes"]
+  },
+  {
+    "id": "whatsapp-fernanda-torres-oscar",
+    "category": "whatsapp",
+    "event": "Fernanda Torres perde o Oscar de melhor atriz para Mikey Madison (02/03/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "kkk a Fernanda Torres perdeu o Oscar de melhor atriz pra Mikey Madison, roubaram ela",
+    "expected_claim": "Fernanda Torres perdeu o Oscar de melhor atriz para Mikey Madison",
+    "expected_keywords": ["fernanda", "torres", "oscar"]
+  },
+  {
+    "id": "whatsapp-cop30-belem",
+    "category": "whatsapp",
+    "event": "COP30 realizada em Belém (novembro de 2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Gente a COP30 vai ser mesmo em Belém, o governo confirmou e já tá construindo tudo lá. Os hotéis estão cobrando uma fortuna",
+    "expected_claim": "A COP30 vai ser em Belém",
+    "expected_keywords": ["cop30", "belem"]
+  },
+  {
+    "id": "whatsapp-decimo-terceiro-bolsa-familia",
+    "category": "whatsapp",
+    "event": "Boato recorrente de 13º do Bolsa Família (2023)",
+    "veracity": "false",
+    "title": null,
+    "text": "Saiu o 13º do Bolsa Família! Quem tem o cartão vai receber em dezembro, compartilha com quem precisa",
+    "expected_claim": "Saiu o 13º do Bolsa Família",
+    "expected_keywords": ["bolsa", "familia"]
+  },
+  {
+    "id": "whatsapp-neymar-santos",
+    "category": "whatsapp",
+    "event": "Neymar volta ao Santos (janeiro de 2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Confirmado!!! O Neymar assinou com o Santos e volta pra Vila Belmiro, vai ser apresentado essa semana",
+    "expected_claim": "Neymar assinou com o Santos",
+    "expected_keywords": ["neymar", "santos"]
+  },
+  {
+    "id": "whatsapp-celular-escolas",
+    "category": "whatsapp",
+    "event": "Lei que restringe o uso de celulares nas escolas (janeiro de 2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Agora é lei: celular está proibido nas escolas do Brasil, inclusive no recreio. Avisem os filhos",
+    "expected_claim": "Celular está proibido nas escolas do Brasil, inclusive no recreio",
+    "expected_keywords": ["celular", "escolas", "proibido"]
+  },
+  {
+    "id": "question-taxacao-pix",
+    "category": "question",
+    "event": "Boato da taxação do Pix (janeiro de 2025)",
+    "veracity": "false",
+    "title": null,
+    "text": "É verdade que o governo vai taxar o Pix a partir de janeiro?",
+    "expected_claim": "O governo vai taxar o Pix a partir de janeiro",
+    "expected_keywords": ["pix", "taxar"]
+  },
+  {
+    "id": "question-bolsonaro-condenado",
+    "category": "question",
+    "event": "STF condena Bolsonaro no julgamento da trama golpista (11/09/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Alguém sabe se o Bolsonaro foi mesmo condenado pelo STF? Vi no grupo da família mas não sei se é fake",
+    "expected_claim": "Bolsonaro foi condenado pelo STF",
+    "expected_keywords": ["bolsonaro", "stf", "condenado"]
+  },
+  {
+    "id": "question-tarifa-trump",
+    "category": "question",
+    "event": "Trump anuncia tarifa de 50% sobre produtos brasileiros (09/07/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "O Trump colocou tarifa de 50% nos produtos do Brasil mesmo?",
+    "expected_claim": "Trump colocou tarifa de 50% nos produtos do Brasil",
+    "expected_keywords": ["trump", "tarifa", "brasil"]
+  },
+  {
+    "id": "question-isencao-ir",
+    "category": "question",
+    "event": "Isenção do IR para quem ganha até R$ 5 mil (sancionada em novembro de 2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Procede que quem ganha até 5 mil não vai mais pagar imposto de renda?",
+    "expected_claim": "Quem ganha até 5 mil não vai mais pagar imposto de renda",
+    "expected_keywords": ["imposto", "renda"]
+  },
+  {
+    "id": "question-vacina-aids",
+    "category": "question",
+    "event": "Boato de que a vacina da Covid causa AIDS (outubro de 2021)",
+    "veracity": "false",
+    "title": null,
+    "text": "É fake ou é real que a vacina da Covid causa AIDS?",
+    "expected_claim": "A vacina da Covid causa AIDS",
+    "expected_keywords": ["vacina", "covid", "aids"]
+  },
+  {
+    "id": "question-morte-papa",
+    "category": "question",
+    "event": "Morte do papa Francisco (21/04/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Vocês viram que o papa Francisco morreu? É verdade?",
+    "expected_claim": "O papa Francisco morreu",
+    "expected_keywords": ["papa", "francisco", "morreu"]
+  },
+  {
+    "id": "question-bloqueio-x",
+    "category": "question",
+    "event": "Moraes determina a suspensão do X no Brasil (30/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Verdade que o X foi bloqueado no Brasil pelo Alexandre de Moraes?",
+    "expected_claim": "O X foi bloqueado no Brasil por Alexandre de Moraes",
+    "expected_keywords": ["moraes", "bloqueado", "brasil"]
+  },
+  {
+    "id": "question-haarp-chuvas",
+    "category": "question",
+    "event": "Boato de que o HAARP causou as enchentes do RS (maio de 2024)",
+    "veracity": "false",
+    "title": null,
+    "text": "Será que é verdade que as chuvas do Rio Grande do Sul foram causadas pelo HAARP?",
+    "expected_claim": "As chuvas do Rio Grande do Sul foram causadas pelo HAARP",
+    "expected_keywords": ["haarp", "chuvas"]
+  },
+  {
+    "id": "question-mapa-da-fome",
+    "category": "question",
+    "event": "Relatório da FAO tira o Brasil do Mapa da Fome (28/07/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "O Brasil saiu do Mapa da Fome da ONU ou isso é propaganda do governo?",
+    "expected_claim": "O Brasil saiu do Mapa da Fome da ONU",
+    "expected_keywords": ["mapa", "fome", "onu"]
+  },
+  {
+    "id": "question-ancelotti",
+    "category": "question",
+    "event": "CBF anuncia Carlo Ancelotti como técnico da seleção (12/05/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Alguém confirma se o Ancelotti é o novo técnico da seleção?",
+    "expected_claim": "Ancelotti é o novo técnico da seleção",
+    "expected_keywords": ["ancelotti", "tecnico", "selecao"]
+  },
+  {
+    "id": "question-descontos-inss",
+    "category": "question",
+    "event": "Operação Sem Desconto contra descontos indevidos no INSS (23/04/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "É verdade que o INSS descontou dinheiro de aposentado sem autorização?",
+    "expected_claim": "O INSS descontou dinheiro de aposentados sem autorização",
+    "expected_keywords": ["inss", "descontou", "aposentado"]
+  },
+  {
+    "id": "question-ivermectina",
+    "category": "question",
+    "event": "Boato de que a ivermectina cura a Covid (2020-2021)",
+    "veracity": "false",
+    "title": null,
+    "text": "Tem fundamento essa história de que a ivermectina cura covid?",
+    "expected_claim": "A ivermectina cura covid",
+    "expected_keywords": ["ivermectina", "covid"]
+  },
+  {
+    "id": "question-selic-15",
+    "category": "question",
+    "event": "Copom eleva a Selic para 15% ao ano (18/06/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "a selic chegou mesmo a 15% ao ano?",
+    "expected_claim": "A Selic chegou a 15% ao ano",
+    "expected_keywords": ["selic"]
+  },
+  {
+    "id": "question-metanol",
+    "category": "question",
+    "event": "Mortes por metanol em bebidas adulteradas em São Paulo (setembro/outubro de 2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "Verdade que acharam metanol em bebida em São Paulo e gente morreu?",
+    "expected_claim": "Acharam metanol em bebida em São Paulo e pessoas morreram",
+    "expected_keywords": ["metanol", "bebida"]
+  },
+  {
+    "id": "question-aviao-vinhedo",
+    "category": "question",
+    "event": "Queda do avião da Voepass em Vinhedo (09/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "O avião que caiu em Vinhedo era da Voepass ou da Latam?",
+    "expected_claim": "O avião que caiu em Vinhedo era da Voepass",
+    "expected_keywords": ["vinhedo", "voepass", "aviao"]
+  },
+  {
+    "id": "uppercase-bolsonaro-condenado",
+    "category": "uppercase",
+    "event": "STF condena Bolsonaro no julgamento da trama golpista (11/09/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "URGENTE: STF CONDENA BOLSONARO A 27 ANOS DE PRISÃO. ACABOU DE SAIR O RESULTADO DO JULGAMENTO",
+    "expected_claim": "STF condena Bolsonaro a 27 anos de prisão",
+    "expected_keywords": ["stf", "bolsonaro", "condena"]
+  },
+  {
+    "id": "uppercase-confisco-poupanca",
+    "category": "uppercase",
+    "event": "Boato recorrente de confisco da poupança pelo governo Lula (2023)",
+    "veracity": "false",
+    "title": null,
+    "text": "O GOVERNO VAI CONFISCAR A POUPANÇA DE TODOS OS BRASILEIROS NA SEGUNDA FEIRA. SAQUEM TUDO!!!",
+    "expected_claim": "O governo vai confiscar a poupança de todos os brasileiros na segunda-feira",
+    "expected_keywords": ["confiscar", "poupanca", "governo"]
+  },
+  {
+    "id": "uppercase-vacina-grafeno",
+    "category": "uppercase",
+    "event": "Boato de grafeno e magnetismo nas vacinas contra a Covid (2021)",
+    "veracity": "false",
+    "title": null,
+    "text": "A VACINA DA COVID TEM GRAFENO E DEIXA AS PESSOAS MAGNETIZADAS. REPASSEM",
+    "expected_claim": "A vacina da Covid tem grafeno e deixa as pessoas magnetizadas",
+    "expected_keywords": ["vacina", "covid", "grafeno"]
+  },
+  {
+    "id": "uppercase-tarifa-trump",
+    "category": "uppercase",
+    "event": "Trump anuncia tarifa de 50% sobre produtos brasileiros (09/07/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "ATENÇÃO: TRUMP ANUNCIA TARIFA DE 50% CONTRA TODOS OS PRODUTOS BRASILEIROS",
+    "expected_claim": "Trump anuncia tarifa de 50% contra todos os produtos brasileiros",
+    "expected_keywords": ["trump", "tarifa", "brasileiros"]
+  },
+  {
+    "id": "uppercase-morte-papa",
+    "category": "uppercase",
+    "event": "Morte do papa Francisco (21/04/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "MORREU O PAPA FRANCISCO AOS 88 ANOS, CONFIRMA O VATICANO",
+    "expected_claim": "Morreu o papa Francisco aos 88 anos, confirma o Vaticano",
+    "expected_keywords": ["papa", "francisco", "vaticano"]
+  },
+  {
+    "id": "uppercase-urnas-fraudadas",
+    "category": "uppercase",
+    "event": "Boatos de fraude nas urnas eletrônicas na eleição de 2022",
+    "veracity": "false",
+    "title": null,
+    "text": "URNAS ELETRÔNICAS FORAM FRAUDADAS EM 2022, TÉCNICO DO TSE CONFESSA TUDO!!!",
+    "expected_claim": "Urnas eletrônicas foram fraudadas em 2022, técnico do TSE confessa",
+    "expected_keywords": ["urnas", "fraudadas", "tse"]
+  },
+  {
+    "id": "uppercase-imposto-pix",
+    "category": "uppercase",
+    "event": "Boato da taxação do Pix (janeiro de 2025)",
+    "veracity": "false",
+    "title": null,
+    "text": "RECEITA FEDERAL VAI COBRAR IMPOSTO DE QUEM FIZER PIX ACIMA DE 5 MIL REAIS",
+    "expected_claim": "Receita Federal vai cobrar imposto de quem fizer Pix acima de 5 mil reais",
+    "expected_keywords": ["receita", "imposto", "pix"]
+  },
+  {
+    "id": "uppercase-cigarro-eletronico",
+    "category": "uppercase",
+    "event": "Anvisa mantém a proibição dos cigarros eletrônicos (19/04/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "ANVISA MANTÉM PROIBIÇÃO DA VENDA DE CIGARRO ELETRÔNICO NO BRASIL",
+    "expected_claim": "Anvisa mantém proibição da venda de cigarro eletrônico no Brasil",
+    "expected_keywords": ["anvisa", "cigarro", "eletronico"]
+  },
+  {
+    "id": "uppercase-rebeca-biles",
+    "category": "uppercase",
+    "event": "Rebeca Andrade vence Simone Biles na final do solo em Paris 2024 (05/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "ACABOU DE SAIR: REBECA ANDRADE GANHA OURO NO SOLO E SUPERA SIMONE BILES EM PARIS",
+    "expected_claim": "Rebeca Andrade ganha ouro no solo e supera Simone Biles em Paris",
+    "expected_keywords": ["rebeca", "andrade", "biles"]
+  },
+  {
+    "id": "uppercase-mapa-da-fome",
+    "category": "uppercase",
+    "event": "Relatório da FAO tira o Brasil do Mapa da Fome (28/07/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "BRASIL SAI DO MAPA DA FOME SEGUNDO RELATÓRIO DA ONU",
+    "expected_claim": "Brasil sai do Mapa da Fome segundo relatório da ONU",
+    "expected_keywords": ["mapa", "fome", "onu"]
+  },
+  {
+    "id": "uppercase-haarp-enchentes",
+    "category": "uppercase",
+    "event": "Boato de que o HAARP causou as enchentes do RS (maio de 2024)",
+    "veracity": "false",
+    "title": null,
+    "text": "HAARP PROVOCOU AS ENCHENTES NO RIO GRANDE DO SUL, A MÍDIA ESCONDE",
+    "expected_claim": "HAARP provocou as enchentes no Rio Grande do Sul",
+    "expected_keywords": ["haarp", "enchentes"]
+  },
+  {
+    "id": "uppercase-morte-silvio-santos",
+    "category": "uppercase",
+    "event": "Morte de Silvio Santos (17/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "SILVIO SANTOS MORRE AOS 93 ANOS EM SÃO PAULO",
+    "expected_claim": "Silvio Santos morre aos 93 anos em São Paulo",
+    "expected_keywords": ["silvio", "santos", "morre"]
+  },
+  {
+    "id": "lowercase-bolsonaro-condenado",
+    "category": "lowercase",
+    "event": "STF condena Bolsonaro no julgamento da trama golpista (11/09/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "o stf condenou o bolsonaro a 27 anos de prisao pela tentativa de golpe",
+    "expected_claim": "O STF condenou Bolsonaro a 27 anos de prisão pela tentativa de golpe",
+    "expected_keywords": ["stf", "bolsonaro", "condenou"]
+  },
+  {
+    "id": "lowercase-taxacao-pix",
+    "category": "lowercase",
+    "event": "Boato da taxação do Pix (janeiro de 2025)",
+    "veracity": "false",
+    "title": null,
+    "text": "governo vai taxar o pix a partir de janeiro quem fizer transferencia vai pagar imposto",
+    "expected_claim": "O governo vai taxar o Pix a partir de janeiro",
+    "expected_keywords": ["pix", "taxar", "imposto"]
+  },
+  {
+    "id": "lowercase-tarifa-trump",
+    "category": "lowercase",
+    "event": "Trump anuncia tarifa de 50% sobre produtos brasileiros (09/07/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "o trump anunciou tarifa de 50 por cento pros produtos do brasil por causa do bolsonaro",
+    "expected_claim": "Trump anunciou tarifa de 50% para os produtos do Brasil",
+    "expected_keywords": ["trump", "tarifa", "brasil"]
+  },
+  {
+    "id": "lowercase-ancelotti",
+    "category": "lowercase",
+    "event": "CBF anuncia Carlo Ancelotti como técnico da seleção (12/05/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "o ancelotti foi contratado pela cbf pra ser tecnico da selecao",
+    "expected_claim": "Ancelotti foi contratado pela CBF para ser técnico da seleção",
+    "expected_keywords": ["ancelotti", "cbf", "selecao"]
+  },
+  {
+    "id": "lowercase-neymar-santos",
+    "category": "lowercase",
+    "event": "Neymar deixa o Al-Hilal e volta ao Santos (janeiro de 2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "o neymar voltou pro santos depois de sair do al hilal",
+    "expected_claim": "Neymar voltou para o Santos depois de sair do Al-Hilal",
+    "expected_keywords": ["neymar", "santos", "hilal"]
+  },
+  {
+    "id": "lowercase-aviao-voepass",
+    "category": "lowercase",
+    "event": "Queda do avião da Voepass em Vinhedo (09/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "aviao da voepass caiu em vinhedo e morreram 62 pessoas",
+    "expected_claim": "Avião da Voepass caiu em Vinhedo e 62 pessoas morreram",
+    "expected_keywords": ["voepass", "vinhedo", "aviao"]
+  },
+  {
+    "id": "lowercase-bloqueio-x-vpn",
+    "category": "lowercase",
+    "event": "Suspensão do X e multa para uso de VPN (agosto de 2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "o moraes mandou bloquear o x no brasil todo e quem usar vpn leva multa",
+    "expected_claim": "Moraes mandou bloquear o X no Brasil e quem usar VPN leva multa",
+    "expected_keywords": ["moraes", "bloquear", "vpn"]
+  },
+  {
+    "id": "lowercase-vacina-chip",
+    "category": "lowercase",
+    "event": "Boato de chip de rastreamento nas vacinas contra a Covid (2020-2021)",
+    "veracity": "false",
+    "title": null,
+    "text": "a vacina da covid tem chip pra rastrear as pessoas",
+    "expected_claim": "A vacina da Covid tem chip para rastrear as pessoas",
+    "expected_keywords": ["vacina", "covid", "chip"]
+  },
+  {
+    "id": "lowercase-cirurgia-lula",
+    "category": "lowercase",
+    "event": "Cirurgia de Lula após queda no Palácio da Alvorada (10/12/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "o lula fez cirurgia na cabeca por causa de uma hemorragia depois de cair no banheiro",
+    "expected_claim": "Lula fez cirurgia na cabeça por causa de uma hemorragia depois de cair no banheiro",
+    "expected_keywords": ["lula", "cirurgia", "hemorragia"]
+  },
+  {
+    "id": "lowercase-apagao",
+    "category": "lowercase",
+    "event": "Apagão na Espanha e em Portugal (28/04/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "apagao deixou espanha e portugal inteiros sem luz",
+    "expected_claim": "Apagão deixou Espanha e Portugal sem luz",
+    "expected_keywords": ["apagao", "espanha", "portugal"]
+  },
+  {
+    "id": "lowercase-selic-copom",
+    "category": "lowercase",
+    "event": "Copom eleva a Selic para 15% ao ano (18/06/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "a selic subiu pra 15 por cento e o copom disse que vai manter os juros altos",
+    "expected_claim": "A Selic subiu para 15% e o Copom disse que vai manter os juros altos",
+    "expected_keywords": ["selic", "copom", "juros"]
+  },
+  {
+    "id": "lowercase-magnitsky",
+    "category": "lowercase",
+    "event": "EUA aplicam a Lei Magnitsky contra Alexandre de Moraes (30/07/2025)",
+    "veracity": "true",
+    "title": null,
+    "text": "os eua colocaram o alexandre de moraes na lei magnitsky",
+    "expected_claim": "Os EUA aplicaram a Lei Magnitsky contra Alexandre de Moraes",
+    "expected_keywords": ["moraes", "magnitsky", "eua"]
+  },
+  {
+    "id": "clickbait-bolsonaro-condenado",
+    "category": "clickbait_title",
+    "event": "STF condena Bolsonaro no julgamento da trama golpista (11/09/2025)",
+    "veracity": "true",
+    "title": "Você não vai acreditar no que aconteceu hoje em Brasília",
+    "text": "O Supremo Tribunal Federal condenou o ex-presidente Jair Bolsonaro a 27 anos e 3 meses de prisão por liderar uma trama golpista. A decisão foi tomada pela Primeira Turma.",
+    "expected_claim": "O Supremo Tribunal Federal condenou o ex-presidente Jair Bolsonaro a 27 anos e 3 meses de prisão por liderar uma trama golpista.",
+    "expected_keywords": ["bolsonaro", "supremo", "condenou"]
+  },
+  {
+    "id": "clickbait-morte-papa",
+    "category": "clickbait_title",
+    "event": "Morte do papa Francisco (21/04/2025)",
+    "veracity": "true",
+    "title": "Notícia triste para todos os católicos do mundo",
+    "text": "O papa Francisco morreu nesta segunda-feira, aos 88 anos, na residência Casa Santa Marta, no Vaticano. A causa foi um AVC seguido de insuficiência cardíaca.",
+    "expected_claim": "O papa Francisco morreu nesta segunda-feira, aos 88 anos, na residência Casa Santa Marta, no Vaticano.",
+    "expected_keywords": ["papa", "francisco", "morreu"]
+  },
+  {
+    "id": "clickbait-imposto-pix",
+    "category": "clickbait_title",
+    "event": "Boato da taxação do Pix (janeiro de 2025)",
+    "veracity": "false",
+    "title": "Olha o que o governo está preparando para o seu bolso",
+    "text": "A Receita Federal vai cobrar imposto sobre todas as transferências feitas por Pix acima de 5 mil reais por mês. Compartilhe com seus amigos.",
+    "expected_claim": "A Receita Federal vai cobrar imposto sobre todas as transferências feitas por Pix acima de 5 mil reais por mês.",
+    "expected_keywords": ["receita", "imposto", "pix"]
+  },
+  {
+    "id": "clickbait-taxa-blusinhas",
+    "category": "clickbait_title",
+    "event": "Sanção da taxação de compras internacionais de até US$ 50 (junho de 2024)",
+    "veracity": "true",
+    "title": "Isso muda tudo para quem compra pela internet",
+    "text": "A lei sancionada por Lula cria um imposto de importação de 20% sobre compras internacionais de até 50 dólares. Sites como Shein e Shopee serão afetados.",
+    "expected_claim": "A lei sancionada por Lula cria um imposto de importação de 20% sobre compras internacionais de até 50 dólares.",
+    "expected_keywords": ["importacao", "compras", "internacionais"]
+  },
+  {
+    "id": "clickbait-ancelotti",
+    "category": "clickbait_title",
+    "event": "CBF anuncia Carlo Ancelotti como técnico da seleção (12/05/2025)",
+    "veracity": "true",
+    "title": "Ninguém esperava essa reviravolta no futebol brasileiro",
+    "text": "A CBF confirmou a contratação do italiano Carlo Ancelotti como técnico da seleção brasileira até a Copa do Mundo de 2026.",
+    "expected_claim": "A CBF confirmou a contratação do italiano Carlo Ancelotti como técnico da seleção brasileira até a Copa do Mundo de 2026.",
+    "expected_keywords": ["ancelotti", "cbf", "selecao"]
+  },
+  {
+    "id": "clickbait-metanol",
+    "category": "clickbait_title",
+    "event": "Mortes por metanol em bebidas adulteradas em São Paulo (setembro/outubro de 2025)",
+    "veracity": "true",
+    "title": "Fique atento antes de beber no fim de semana",
+    "text": "Autoridades de saúde de São Paulo confirmaram mortes por intoxicação com metanol em bebidas destiladas adulteradas. A recomendação é evitar destilados de origem desconhecida.",
+    "expected_claim": "Autoridades de saúde de São Paulo confirmaram mortes por intoxicação com metanol em bebidas destiladas adulteradas.",
+    "expected_keywords": ["metanol", "intoxicacao", "mortes"]
+  },
+  {
+    "id": "clickbait-haarp",
+    "category": "clickbait_title",
+    "event": "Boato de que o HAARP causou as enchentes do RS (maio de 2024)",
+    "veracity": "false",
+    "title": "O que estão escondendo sobre as enchentes do Sul",
+    "text": "As chuvas que inundaram o Rio Grande do Sul foram provocadas artificialmente pela antena HAARP, operada pelos Estados Unidos.",
+    "expected_claim": "As chuvas que inundaram o Rio Grande do Sul foram provocadas artificialmente pela antena HAARP, operada pelos Estados Unidos.",
+    "expected_keywords": ["haarp", "chuvas"]
+  },
+  {
+    "id": "clickbait-oscar",
+    "category": "clickbait_title",
+    "event": "Ainda Estou Aqui vence o Oscar de melhor filme internacional (02/03/2025)",
+    "veracity": "true",
+    "title": "Grande vitória do cinema nacional neste domingo",
+    "text": "O filme Ainda Estou Aqui, de Walter Salles, venceu o Oscar de melhor filme internacional. Fernanda Torres também concorria a melhor atriz.",
+    "expected_claim": "O filme Ainda Estou Aqui, de Walter Salles, venceu o Oscar de melhor filme internacional.",
+    "expected_keywords": ["oscar", "filme", "internacional"]
+  },
+  {
+    "id": "opinion-ancelotti",
+    "category": "opinion",
+    "event": "Opinião sobre a contratação de Ancelotti (2025)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Na minha opinião o Ancelotti não vai dar certo na seleção, o futebol daqui é muito diferente da Europa.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-taxa-blusinhas",
+    "category": "opinion",
+    "event": "Opinião sobre a taxação de compras internacionais (2024)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Acho um absurdo essa taxa das blusinhas, quem paga a conta é sempre o pobre.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-lula-2026",
+    "category": "opinion",
+    "event": "Opinião sobre a candidatura de Lula em 2026",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Eu acho que o Lula deveria pensar melhor antes de concorrer de novo em 2026.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-cop30",
+    "category": "opinion",
+    "event": "Opinião sobre a COP30 em Belém (2025)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Para mim a COP30 em Belém foi um desperdício de dinheiro público.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-ainda-estou-aqui",
+    "category": "opinion",
+    "event": "Opinião sobre Ainda Estou Aqui e Fernanda Torres (2025)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Que filme lindo é Ainda Estou Aqui, a Fernanda Torres merecia demais esse Oscar.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-neymar-selecao",
+    "category": "opinion",
+    "event": "Opinião sobre Neymar na seleção",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Sinceramente acho que o Neymar já passou da fase de jogar na seleção.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-leao-xiv",
+    "category": "opinion",
+    "event": "Opinião sobre o papa Leão XIV (2025)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "O papa Leão XIV parece ser uma pessoa muito mais moderada, gostei dele.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-juros-altos",
+    "category": "opinion",
+    "event": "Opinião sobre os juros altos (2025)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Na minha visão os juros altos estão matando o pequeno empresário brasileiro.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-suspensao-x",
+    "category": "opinion",
+    "event": "Opinião sobre a suspensão do X (2024)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Achei exagerada a decisão de suspender o X no Brasil inteiro.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-rebeca-andrade",
+    "category": "opinion",
+    "event": "Opinião sobre Rebeca Andrade (2024)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Tenho certeza que a Rebeca Andrade é a maior atleta da história do país, ninguém chega perto.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-celular-escolas",
+    "category": "opinion",
+    "event": "Opinião sobre a restrição de celulares nas escolas (2025)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Eu prefiro que meus filhos fiquem sem celular na escola mesmo, acho que melhora o aprendizado.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-prevencao-enchentes",
+    "category": "opinion",
+    "event": "Opinião sobre prevenção de enchentes após as cheias do RS (2024)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "O governo devia investir mais em prevenção de enchentes em vez de gastar com propaganda.",
+    "expected_claim": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "opinion-tarifas-trump",
+    "category": "opinion",
+    "event": "Opinião sobre as tarifas de Trump contra o Brasil (2025)",
+    "veracity": "opinion",
+    "title": null,
+    "text": "Pra mim o Trump está usando as tarifas só pra pressionar politicamente o Brasil.",
+    "expected_claim": null,
+    "expected_keywords": []
+  }
+]
