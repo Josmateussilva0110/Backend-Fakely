@@ -20,10 +20,21 @@ class AnalysisRules(BaseModel):
     stopwords: frozenset[str]
     sensational_terms: frozenset[str]
     alarmist_terms: frozenset[str]
+    # Siglas curtas que identificam o assunto (STF, Pix), mesmo escritas em minúsculas
+    acronyms: frozenset[str]
+    # Aberturas de pergunta e de conversa retiradas da afirmação ("é verdade que", "gente")
+    claim_prefixes: frozenset[str]
+    # Marcas de opinião: a frase não traz um fato verificável
+    opinion_terms: frozenset[str]
+    # Títulos chamativos que não dizem o fato ("você não vai acreditar")
+    vague_title_terms: frozenset[str]
     style_thresholds: StyleThresholds
 
     # Termos são comparados com o texto normalizado (minúsculo e sem acento)
-    @field_validator("stopwords", "sensational_terms", "alarmist_terms", mode="before")
+    @field_validator(
+        "stopwords", "sensational_terms", "alarmist_terms", "acronyms", "claim_prefixes", "opinion_terms",
+        "vague_title_terms", mode="before",
+    )
     @classmethod
     def normalize_terms(cls, values: list[str]) -> frozenset[str]:
         return frozenset(normalize_text(v) for v in values)

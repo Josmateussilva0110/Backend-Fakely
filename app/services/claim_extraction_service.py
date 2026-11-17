@@ -1,12 +1,26 @@
 import re
 
 from app.services.analysis_rules_service import AnalysisRules
-from app.services.text_processing_service import URL_PATTERN, WORD_PATTERN, find_terms, normalize_text, tokenize
+from app.services.text_processing_service import (
+    URL_PATTERN,
+    WORD_PATTERN,
+    find_terms,
+    is_acronym,
+    is_shouting,
+    normalize_text,
+    tokenize,
+)
 
 _SENTENCE_SPLIT_PATTERN = re.compile(r"(?<=[.!?])\s+|\n+")
+# Em perguntas como "era da Voepass ou da Latam?", a alternativa depois do "ou" não é a afirmação
+_ALTERNATIVE_PATTERN = re.compile(r"\s+ou\s+", re.IGNORECASE)
+_LEADING_PUNCTUATION = " ,:;!-–—"
+_TRAILING_QUESTION_WORD = " mesmo"
 MIN_CONTENT_WORD_LENGTH = 4
 # Título com ao menos esse número de palavras de conteúdo já costuma ser a própria alegação
 MIN_TITLE_CONTENT_WORDS = 3
+# Rótulo antes de dois-pontos ("Atenção aposentados:") com até esse número de palavras
+LABEL_MAX_WORDS = 4
 PROPER_NOUN_BONUS = 2
 NUMBER_BONUS = 1
 CALL_TO_ACTION_PENALTY = 3
@@ -17,36 +31,107 @@ class ClaimExtractionService:
         self.rules = rules
         self.min_words = min_words
         self.max_length = max_length
+        # Prefixos mais longos primeiro: "é verdade mesmo que" antes de "é verdade que"
+        self.prefixes = sorted((tuple(tokenize(p)) for p in rules.claim_prefixes), key=len, reverse=True)
+        self.label_terms = rules.sensational_terms | rules.alarmist_terms | rules.claim_prefixes
 
     def extract(self, text: str, title: str | None = None) -> str | None:
-        if title and self._content_words(title) >= MIN_TITLE_CONTENT_WORDS:
-            claim = self._clean(title)
+        sentences = self._candidate_sentences(text)
+        if title and self.is_specific_title(title):
+            claim = self.to_claim(title)
+        elif sentences:
+            claim = self.to_claim(max(sentences, key=self.score_sentence))
+        elif title and self._content_words(title) >= MIN_TITLE_CONTENT_WORDS and not self._is_opinion(title):
+            # Título vago, mas é o único trecho com tamanho suficiente
+            claim = self.to_claim(title)
         else:
-            sentences = [s for s in self.split_sentences(text) if self._word_count(s) >= self.min_words]
-            claim = max(sentences, key=self.score_sentence, default=None)
+            claim = None
         return claim[: self.max_length] if claim else None
+
+    def is_opinion(self, text: str) -> bool:
+        """Todas as frases com tamanho suficiente expressam opinião, sem fato verificável."""
+        sentences = [s for s in self.split_sentences(text) if self._word_count(s) >= self.min_words]
+        return bool(sentences) and all(self._is_opinion(s) for s in sentences)
+
+    def is_specific_title(self, title: str) -> bool:
+        """Título que diz o fato: cita nome, sigla ou número e não é chamariz ("você não vai acreditar")."""
+        if self._content_words(title) < MIN_TITLE_CONTENT_WORDS or self._is_opinion(title):
+            return False
+        if find_terms(normalize_text(title), self.rules.vague_title_terms):
+            return False
+        has_number = any(word.isdigit() for word in WORD_PATTERN.findall(title))
+        return has_number or self._specific_words(title) > 0
 
     def split_sentences(self, text: str) -> list[str]:
         return [self._clean(part) for part in _SENTENCE_SPLIT_PATTERN.split(text) if part.strip()]
 
     def score_sentence(self, sentence: str) -> int:
-        """Frases com nomes próprios, números e termos específicos tendem a ser verificáveis."""
-        words = WORD_PATTERN.findall(sentence)
-        proper_nouns = sum(1 for word in words[1:] if word[0].isupper() and not word.isupper())
-        has_number = any(word.isdigit() for word in words)
+        """Frases com nomes próprios, siglas, números e termos específicos tendem a ser verificáveis."""
+        has_number = any(word.isdigit() for word in WORD_PATTERN.findall(sentence))
         # Chamadas como "compartilhe antes que apaguem" não são afirmações verificáveis
         calls_to_action = len(find_terms(normalize_text(sentence), self.rules.sensational_terms))
         return (
             self._content_words(sentence)
-            + PROPER_NOUN_BONUS * proper_nouns
+            + PROPER_NOUN_BONUS * self._specific_words(sentence)
             + NUMBER_BONUS * has_number
             - CALL_TO_ACTION_PENALTY * calls_to_action
         )
 
+    def to_claim(self, sentence: str) -> str:
+        """Transforma a frase do usuário na afirmação: sem aberturas de conversa e sem forma de pergunta."""
+        original = self._clean(sentence)
+        claim = self._strip_openings(original)
+        if original.endswith("?"):
+            claim = _ALTERNATIVE_PATTERN.split(claim)[0].rstrip(" ?!.")
+            if claim.lower().endswith(_TRAILING_QUESTION_WORD):
+                claim = claim[: -len(_TRAILING_QUESTION_WORD)]
+        if not claim:
+            return original
+        return claim[0].upper() + claim[1:] if claim != original else claim
+
+    def _candidate_sentences(self, text: str) -> list[str]:
+        return [
+            s for s in self.split_sentences(text)
+            if self._word_count(s) >= self.min_words and not self._is_opinion(s)
+        ]
+
+    def _strip_openings(self, sentence: str) -> str:
+        while True:
+            words = list(WORD_PATTERN.finditer(sentence))
+            cut = self._label_length(sentence) or self._prefix_length(words)
+            if not cut or cut >= len(words):
+                return sentence
+            sentence = sentence[words[cut - 1].end():].lstrip(_LEADING_PUNCTUATION)
+
+    def _prefix_length(self, words: list[re.Match[str]]) -> int:
+        tokens = tuple(normalize_text(word.group()) for word in words)
+        return next((len(prefix) for prefix in self.prefixes if tokens[: len(prefix)] == prefix), 0)
+
+    def _label_length(self, sentence: str) -> int:
+        head, separator, _ = sentence.partition(":")
+        label_words = WORD_PATTERN.findall(head)
+        if not separator or not 0 < len(label_words) <= LABEL_MAX_WORDS:
+            return 0
+        return len(label_words) if find_terms(normalize_text(head), self.label_terms) else 0
+
+    def _specific_words(self, text: str) -> int:
+        """Siglas e nomes próprios; num texto todo em maiúsculas a caixa não indica nome próprio."""
+        words = WORD_PATTERN.findall(text)
+        shouting = is_shouting(text)
+        acronyms = sum(1 for word in words if is_acronym(word, self.rules.acronyms, shouting))
+        if shouting:
+            return acronyms
+        proper_nouns = sum(1 for word in words[1:] if word[0].isupper() and not word.isupper())
+        return acronyms + proper_nouns
+
+    def _is_opinion(self, text: str) -> bool:
+        return bool(find_terms(normalize_text(text), self.rules.opinion_terms))
+
     def _content_words(self, text: str) -> int:
         return sum(
             1 for token in tokenize(normalize_text(text))
-            if len(token) >= MIN_CONTENT_WORD_LENGTH and token not in self.rules.stopwords
+            if token not in self.rules.stopwords
+            and (len(token) >= MIN_CONTENT_WORD_LENGTH or token in self.rules.acronyms)
         )
 
     @staticmethod

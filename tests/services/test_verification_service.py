@@ -92,6 +92,16 @@ def test_short_text_is_inconclusive_without_search(make_verification_service, ve
     assert search.calls == 0
 
 
+def test_opinion_is_inconclusive_without_search(make_verification_service, verification_config):
+    search = FakeSearchService(make_outcome(verification_config, {"lupa": [LUPA_FALSE]}))
+    report = make_verification_service(search).verify("Na minha opinião a taxa das blusinhas prejudica os mais pobres.")
+    assert report.classification == Classification.INCONCLUSIVE
+    assert report.claim is None
+    assert report.verification_status == VerificationStatus.SKIPPED
+    assert "opinião" in report.justification
+    assert search.calls == 0
+
+
 def test_search_disabled_is_inconclusive(make_verification_service):
     report = make_verification_service().verify(TEXT, title=TITLE)
     assert report.classification == Classification.INCONCLUSIVE
