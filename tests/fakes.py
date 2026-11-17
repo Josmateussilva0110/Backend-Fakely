@@ -35,8 +35,10 @@ class FakeEntailmentModel:
 
     def __init__(self, scores: dict[str, float]):
         self.scores = scores
+        self.hypotheses: list[str] = []
 
     def entailment(self, premises: list[str], hypothesis: str) -> list[float]:
+        self.hypotheses.append(hypothesis)
         return [self.scores.get(premise, 0.0) for premise in premises]
 
 
@@ -57,3 +59,15 @@ def make_outcome(
         sources_failed=failed,
         accessed_at=datetime(2026, 10, 6, tzinfo=UTC),
     )
+
+
+class FakeTagger:
+    """Classe gramatical fixa por palavra; o resto é substantivo."""
+
+    def __init__(self, classes: dict[str, str]):
+        self.classes = classes
+        self.calls = 0
+
+    def tag(self, text: str) -> list[tuple[str, str]]:
+        self.calls += 1
+        return [(word, self.classes.get(word, "NOUN")) for word in text.replace(",", " ").replace(".", " ").split()]

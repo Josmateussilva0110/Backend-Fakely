@@ -28,6 +28,13 @@ EvidenceCategory = Literal["official", "scientific", "fact_checker", "news_outle
 STEM_LENGTH = 5
 MIN_TOKEN_LENGTH = 3
 VERDICT_SCAN_LENGTH = 200
+# Frases do resumo com menos palavras que isso (restos cortados, "...") não vão para o modelo
+MIN_PREMISE_SENTENCE_WORDS = 4
+_PREMISE_SPLIT_PATTERN = re.compile(r"(?<=[.!?;])\s+")
+# Datas da afirmação ("em 14/11/2026") ficam fora do modelo: a janela de publicação já as confere
+_DATE_PATTERN = re.compile(r"\s*\b(?:em|no dia|dia)?\s*\d{1,2}/\d{1,2}(?:/\d{2,4})?\b", re.IGNORECASE)
+# "3x2" vira "3 a 2", como as reportagens escrevem
+_SCORE_PATTERN = re.compile(r"\b(\d{1,2})\s*[xX×]\s*(\d{1,2})\b")
 # Categorias que publicam apuração própria e podem sustentar uma afirmação
 REPORTING_CATEGORIES = ("official", "scientific", "news_outlet")
 
@@ -62,6 +69,8 @@ class Candidate:
     relevance: float
     # A manchete cita os nomes próprios da afirmação (condição para o modelo sustentar)
     names_covered: bool
+    # Manchete ou resumo citam ao menos uma palavra do fato, além dos nomes (condição para o modelo)
+    fact_covered: bool = True
 
 
 class EvidenceService:
@@ -89,7 +98,8 @@ class EvidenceService:
         reference = reference_date or outcome.accessed_at.date()
         claim_text = normalize_text(f"{title or ''} {claim}")
         required = self.required_stems(f"{title or ''} {claim}", outcome.keywords)
-        candidates = self._candidates(outcome, self.stems(claim_text), required)
+        claim_stems = self.stems(claim_text)
+        candidates = self._candidates(outcome, claim_stems, required, claim_stems - required)
         entailments = self.score_entailment(candidates, claim)
         evidences = [
             evidence
@@ -110,28 +120,44 @@ class EvidenceService:
         names = [word for word in WORD_PATTERN.findall(text) if word[0].isupper()]
         return self.stems(" ".join(names)) or self.stems(" ".join(keywords[: self.settings.verification_min_keywords]))
 
-    def _candidates(self, outcome: SearchOutcome, claim_stems: set[str], required: set[str]) -> list[Candidate]:
-        """Resultados com palavras suficientes em comum com a afirmação (filtro antes do modelo)."""
+    def _candidates(
+        self, outcome: SearchOutcome, claim_stems: set[str], required: set[str], fact_stems: set[str]
+    ) -> list[Candidate]:
+        """Resultados com palavras suficientes em comum com a afirmação (filtro antes do modelo).
+
+        Só os nomes não bastam para o modelo: para "Brasil perde para o Japão", ele chegou a ver
+        implicação (0,7) em "É falso que Brasil virou desenho animado no Japão".
+        """
         candidates = []
         for source_results in outcome.results:
             for result in source_results.results:
                 relevance, overlap = self.compute_relevance(result.title, claim_stems)
                 if overlap >= self.settings.evidence_min_overlap:
                     names_covered = required <= self.stems(result.title)
-                    candidates.append(Candidate(source_results.source, result, relevance, names_covered))
+                    fact_covered = not fact_stems or bool(fact_stems & self.stems(self.premise(result)))
+                    candidates.append(
+                        Candidate(source_results.source, result, relevance, names_covered, fact_covered)
+                    )
         return candidates
 
     def score_entailment(self, candidates: list[Candidate], claim: str) -> list[float | None]:
-        """Implicação de cada resultado; None sem o modelo ou quando faltam os nomes da afirmação."""
+        """Implicação de cada resultado; None sem o modelo ou quando faltam os nomes ou o fato da afirmação."""
         scores: list[float | None] = [None] * len(candidates)
         if self.entailment_model is None:
             return scores
-        covered = [index for index, candidate in enumerate(candidates) if candidate.names_covered]
+        covered = [
+            index for index, candidate in enumerate(candidates)
+            if candidate.names_covered and candidate.fact_covered
+        ]
         if not covered:
             return scores
-        premises = [self.premise(candidates[index].result) for index in covered]
-        for index, score in zip(covered, self.run_model(premises, claim), strict=True):
-            scores[index] = round(score, 3)
+        # A manchete e cada frase do resumo vão separadas e vale a maior nota: num bloco único o modelo
+        # oscila (0,10 para a reportagem certa do jogo, 0,71 para uma checagem sobre outro assunto)
+        groups = [self.premise_sentences(candidates[index].result) for index in covered]
+        flat = [sentence for group in groups for sentence in group]
+        results = iter(self.run_model(flat, to_hypothesis(claim)))
+        for index, group in zip(covered, groups, strict=True):
+            scores[index] = round(max(next(results) for _ in group), 3)
         return scores
 
     def run_model(self, premises: list[str], claim: str) -> list[float]:
@@ -141,6 +167,11 @@ class EvidenceService:
             return self.entailment_model.entailment(premises, claim)
         finally:
             self.inference_slots.release()
+
+    def premise_sentences(self, result: SearchResult) -> list[str]:
+        excerpt = result.excerpt[: self.settings.evidence_excerpt_max_length]
+        sentences = [part.strip() for part in _PREMISE_SPLIT_PATTERN.split(excerpt)]
+        return [result.title, *(s for s in sentences if len(s.split()) >= MIN_PREMISE_SENTENCE_WORDS)]
 
     def premise(self, result: SearchResult) -> str:
         # O resumo completa a manchete: "Paquetá aprova empate do Flamengo com o Estudiantes"
@@ -258,6 +289,9 @@ class EvidenceService:
         # publicada longe da data da notícia, nunca (o veredito acima vale sempre: boatos voltam a circular)
         if category not in REPORTING_CATEGORIES or denial or out_of_window:
             return "neutral"
+        # Manchete praticamente igual à afirmação: o modelo às vezes não reconhece nem o texto idêntico
+        if relevance >= self.settings.evidence_identical_relevance:
+            return "supports"
         # Com o modelo, a manchete precisa implicar a afirmação; sem ele, vale a semelhança de palavras.
         # O modelo nunca gera "contradiz": contradição só vem do veredito das agências de checagem
         if entailment is not None:
@@ -303,6 +337,12 @@ class EvidenceService:
             for token in tokenize(normalize_text(text))
             if len(token) >= MIN_TOKEN_LENGTH and token not in self.stopwords
         }
+
+
+def to_hypothesis(claim: str) -> str:
+    """Afirmação como o modelo compara melhor: sem datas e com placar por extenso."""
+    without_dates = _DATE_PATTERN.sub("", claim)
+    return " ".join(_SCORE_PATTERN.sub(r"\1 a \2", without_dates).split()) or claim
 
 
 def canonical_url(url: str) -> str:

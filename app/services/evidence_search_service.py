@@ -11,16 +11,20 @@ from app.core.config import Settings
 from app.integrations.folha_search_client import FolhaSearchClient
 from app.integrations.search_client import HttpFetcher, SearchClient, SearchError, SearchResult
 from app.integrations.wordpress_search_client import WordpressSearchClient
+from app.ml.part_of_speech_tagger import WordTagger
 from app.services.text_processing_service import WORD_PATTERN, is_acronym, is_shouting, normalize_text, tokenize
 from app.services.verification_config_service import VerificationConfig, VerificationSourceConfig
 
 logger = logging.getLogger(__name__)
 
 MIN_KEYWORD_LENGTH = 4
-# Ordem de especificidade das palavras-chave
-ACRONYM_RANK = 2
-PROPER_NOUN_RANK = 1
-COMMON_WORD_RANK = 0
+# Ordem de especificidade das palavras-chave: siglas, depois substantivos e nomes, depois verbos
+ACRONYM_RANK = 3
+NOUN_RANK = 2
+VERB_RANK = 1
+OTHER_WORD_RANK = 0
+NOUN_CLASSES = frozenset({"NOUN", "PROPN"})
+VERB_CLASSES = frozenset({"VERB"})
 
 
 @dataclass(frozen=True)
@@ -51,11 +55,13 @@ class EvidenceSearchService:
         stopwords: frozenset[str],
         providers: list[SearchProvider],
         acronyms: frozenset[str] = frozenset(),
+        tagger: WordTagger | None = None,
     ):
         self.settings = settings
         self.stopwords = stopwords
         self.providers = providers
         self.acronyms = acronyms
+        self.tagger = tagger
         self.executor = ThreadPoolExecutor(max_workers=max(len(providers), 1), thread_name_prefix="search")
 
     @classmethod
@@ -66,10 +72,11 @@ class EvidenceSearchService:
         stopwords: frozenset[str],
         http_client: httpx.Client,
         acronyms: frozenset[str] = frozenset(),
+        tagger: WordTagger | None = None,
     ) -> "EvidenceSearchService":
         fetcher = HttpFetcher(http_client, settings.verification_max_response_bytes)
         providers = [SearchProvider(source, cls._build_client(source, fetcher)) for source in config.sources]
-        return cls(settings, stopwords, providers, acronyms)
+        return cls(settings, stopwords, providers, acronyms, tagger)
 
     @staticmethod
     def _build_client(source: VerificationSourceConfig, fetcher: HttpFetcher) -> SearchClient:
@@ -121,27 +128,44 @@ class EvidenceSearchService:
     def extract_keywords(self, claim: str, title: str | None = None) -> list[str]:
         """Palavras mais específicas da afirmação, completadas pelo título.
 
-        Retorna em ordem de especificidade: siglas (STF, Pix), nomes próprios (inicial maiúscula)
-        e depois as palavras mais longas.
+        Retorna em ordem de especificidade: siglas (STF, Pix), substantivos e nomes próprios,
+        verbos e depois as demais; dentro de cada grupo, as palavras mais longas.
         """
         candidates: dict[str, int] = {}
         for chunk in (claim, title):
-            # Texto todo em maiúsculas: a caixa não distingue nome próprio
-            shouting = is_shouting(chunk or "")
-            for word in WORD_PATTERN.findall(chunk or ""):
+            for word, rank in self._ranked_words(chunk or ""):
                 token = normalize_text(word)
-                if token.isdigit() or token in self.stopwords or token in candidates:
-                    continue
-                if is_acronym(word, self.acronyms, shouting):
-                    candidates[token] = ACRONYM_RANK
-                elif len(token) >= MIN_KEYWORD_LENGTH:
-                    proper_noun = word[0].isupper() and not shouting
-                    candidates[token] = PROPER_NOUN_RANK if proper_noun else COMMON_WORD_RANK
+                if token and not is_number_like(token) and token not in self.stopwords and token not in candidates:
+                    candidates[token] = rank
             if len(candidates) >= self.settings.verification_max_keywords:
                 break
 
         ranked = sorted(candidates, key=lambda t: (candidates[t], len(t)), reverse=True)
         return ranked[: self.settings.verification_max_keywords]
+
+    def _ranked_words(self, text: str) -> list[tuple[str, int]]:
+        # Texto todo em maiúsculas engana o modelo ("TRUMP ANUNCIA" vira organização) e a regra da caixa
+        shouting = is_shouting(text)
+        if self.tagger is not None and not shouting:
+            tagged = [(word, self._class_rank(word_class)) for word, word_class in self.tagger.tag(text)]
+        else:
+            tagged = [
+                (word, NOUN_RANK if word[0].isupper() and not shouting else OTHER_WORD_RANK)
+                for word in WORD_PATTERN.findall(text)
+            ]
+        ranked = []
+        for word, rank in tagged:
+            if is_acronym(word, self.acronyms, shouting):
+                ranked.append((word, ACRONYM_RANK))
+            elif len(normalize_text(word)) >= MIN_KEYWORD_LENGTH:
+                ranked.append((word, rank))
+        return ranked
+
+    @staticmethod
+    def _class_rank(word_class: str) -> int:
+        if word_class in NOUN_CLASSES:
+            return NOUN_RANK
+        return VERB_RANK if word_class in VERB_CLASSES else OTHER_WORD_RANK
 
     def _search_provider(self, provider: SearchProvider, keywords: list[str]) -> list[SearchResult]:
         limit = self.settings.verification_max_results
@@ -154,6 +178,12 @@ class EvidenceSearchService:
             known = {r.url for r in results}
             results += [r for r in provider.client.search(" ".join(specific), limit) if r.url not in known]
         return results
+
+
+def is_number_like(token: str) -> bool:
+    """Datas, placares e valores ("14/11/2026", "3x2") não ajudam a busca; "cop30" e "covid-19" ajudam."""
+    digits = sum(char.isdigit() for char in token)
+    return digits > 0 and digits >= sum(char.isalpha() for char in token)
 
 
 def mentions_all(result: SearchResult, keywords: list[str]) -> bool:

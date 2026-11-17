@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     # evita que "X é o novo técnico" seja confirmado pela passagem anterior do mesmo técnico
     evidence_support_window_days: int = 60
     decision_min_relevance: float = 0.7
+    # Manchete praticamente igual à afirmação: sustenta mesmo quando o modelo NLI discorda
+    # (ele deu 0,48 para "Vini Jr faz hat-trick e Brasil encerra 2026 com 7 a 0 sobre Singapura" contra ela mesma)
+    evidence_identical_relevance: float = 0.95
     # Suficiência: fontes independentes necessárias para concluir
     decision_min_supporting_sources: int = 1
     decision_min_contradicting_sources: int = 1
@@ -83,6 +86,11 @@ class Settings(BaseSettings):
     # O modelo usa todos os núcleos da CPU: inferências em paralelo só disputariam o processador
     nli_max_concurrent: int = 1
     nli_queue_timeout_seconds: float = 30.0
+
+    # Classe gramatical (spaCy) para escolher as palavras-chave da busca: substantivos antes de adjetivos.
+    # Desligado, volta a valer só a regra da letra maiúscula
+    pos_tagger_enabled: bool = True
+    pos_tagger_model: str = "pt_core_news_sm"
 
     # Leitura da página quando o usuário envia só a URL (com proteção contra SSRF)
     page_fetch_enabled: bool = True
