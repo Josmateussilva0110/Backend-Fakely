@@ -998,5 +998,25 @@
     "text": "Pra mim o Trump está usando as tarifas só pra pressionar politicamente o Brasil.",
     "expected_claim": null,
     "expected_keywords": []
+  },
+  {
+    "id": "news-brasil-perde-japao-2026",
+    "category": "news",
+    "event": "Japão vence o Brasil por 3 a 2 em amistoso no Estádio Nacional de Singapura (14/11/2026), noticiado pela Folha",
+    "veracity": "true",
+    "title": null,
+    "text": "Brasil perde para o Japão de 3x2 no dia no amistoso em 14/11/2026",
+    "expected_claim": "Brasil perde para o Japão de 3x2 no amistoso em 14/11/2026",
+    "expected_keywords": ["brasil", "japao", "perde"]
+  },
+  {
+    "id": "news-brasil-goleia-singapura",
+    "category": "news",
+    "event": "Brasil vence Singapura por 7 a 0 com hat-trick de Vini Jr. no último jogo de 2026, noticiado por CNN Brasil e Veja",
+    "veracity": "true",
+    "title": "Vini Jr faz hat-trick e Brasil encerra 2026 com 7 a 0 sobre Singapura",
+    "text": "O último amistoso da Seleção Brasileira foi em ritmo de treino. Em um Estádio Nacional vazio, o Brasil não tomou conhecimento da equipe local e goleou Singapura por 7 a 0",
+    "expected_claim": "Vini Jr faz hat-trick e Brasil encerra 2026 com 7 a 0 sobre Singapura",
+    "expected_keywords": ["singapura", "brasil", "vini"]
   }
 ]
