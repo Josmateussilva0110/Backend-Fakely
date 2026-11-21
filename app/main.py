@@ -95,7 +95,7 @@ def build_verification_service(
         registry,
         search_service=EvidenceSearchService.build(
             settings, config, rules.stopwords, http_client,
-            acronyms=rules.acronyms, tagger=load_part_of_speech_tagger(settings),
+            acronyms=rules.acronyms, tagger=load_part_of_speech_tagger(settings), generic_terms=rules.generic_terms,
         ),
         evidence_service=EvidenceService(
             settings, config, registry, rules.stopwords, entailment_model=load_entailment_model(settings)

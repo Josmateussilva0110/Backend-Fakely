@@ -181,7 +181,7 @@ A análise (`GET /news-analyses/{id}`) vem agrupada por finalidade:
 | Bloco | Conteúdo |
 |---|---|
 | `result` | Classificação, nível de confiança, justificativa e quantas fontes independentes sustentam ou contradizem |
-| `evidences` | Publicações em três grupos: `supporting`, `contradicting` e `related` (sobre o assunto, sem posição). Cada uma traz `scores` (relevância e implicação) para auditoria |
+| `evidences` | Só as publicações que decidem, em dois grupos: `supporting` e `contradicting`. Cada uma traz `scores` (relevância e implicação) para auditoria. As que não confirmam nem contradizem ficam gravadas no banco, mas não vêm na resposta |
 | `warnings` | Limitações, sinais de estilo e avaliação do site de origem |
 | `verification` | Status da busca, sites consultados e com falha, palavras-chave e versão das regras |
 
