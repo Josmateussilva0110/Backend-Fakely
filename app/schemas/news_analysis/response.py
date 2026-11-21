@@ -86,10 +86,10 @@ class EvidenceResponse(BaseModel):
 
 
 class EvidenceGroupsResponse(BaseModel):
+    """Só os links que decidem; os demais ficam gravados (auditoria), mas não vão para o cliente."""
+
     supporting: list[EvidenceResponse]
     contradicting: list[EvidenceResponse]
-    # Sobre o assunto, mas sem confirmar nem contradizer
-    related: list[EvidenceResponse]
 
 
 class SourceAssessmentResponse(BaseModel):
@@ -142,7 +142,7 @@ class NewsAnalysisResponse(NewsAnalysisSummaryResponse):
         if not isinstance(data, NewsAnalysis):
             return data
         by_stance = {stance: [e for e in data.evidences if e.stance == stance]
-                     for stance in ("supports", "contradicts", "neutral")}
+                     for stance in ("supports", "contradicts")}
         return {
             **summary_fields(data),
             "result": {
@@ -154,7 +154,6 @@ class NewsAnalysisResponse(NewsAnalysisSummaryResponse):
             "evidences": {
                 "supporting": by_stance["supports"],
                 "contradicting": by_stance["contradicts"],
-                "related": by_stance["neutral"],
             },
             "warnings": {
                 "limitations": data.limitations,

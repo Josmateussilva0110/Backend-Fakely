@@ -54,7 +54,39 @@ def test_extract_keywords_prefers_nouns_over_adjectives_and_verbs(settings, rule
     tagger = FakeTagger({"Donald": "PROPN", "anunciou": "VERB", "importados": "ADJ", "elevadas": "ADJ", "sobre": "ADP"})
     service = EvidenceSearchService(settings, rules.stopwords, [], acronyms=rules.acronyms, tagger=tagger)
     keywords = service.extract_keywords("Donald anunciou tarifas elevadas sobre produtos importados")
-    assert keywords == ["produtos", "tarifas", "donald", "anunciou"]
+    assert keywords == ["donald", "tarifas", "produtos", "anunciou"]
+
+
+def test_extract_keywords_keeps_sentence_order_over_word_length(settings, rules):
+    # Por tamanho, "categoria" e "medalha" tirariam "ouro" da busca
+    tagger = FakeTagger({"conquistou": "VERB", "acima": "ADV"})
+    service = EvidenceSearchService(settings, rules.stopwords, [], tagger=tagger)
+    keywords = service.extract_keywords("Beatriz Souza conquistou ouro acima da categoria medalha")
+    assert keywords == ["beatriz", "souza", "ouro", "categoria"]
+
+
+def test_extract_keywords_keeps_first_and_last_part_of_compound_names(settings, rules):
+    # Sem a regra, "Donald John Trump" tiraria "tarifa" da busca
+    tagger = FakeTagger({"Donald": "PROPN", "John": "PROPN", "Trump": "PROPN", "anuncia": "VERB"})
+    service = EvidenceSearchService(settings, rules.stopwords, [], tagger=tagger)
+    keywords = service.extract_keywords("Donald John Trump anuncia tarifa")
+    assert keywords == ["donald", "trump", "tarifa", "anuncia"]
+
+
+def test_extract_keywords_joins_names_through_connectors_and_keeps_acronyms(settings, rules):
+    names = {"Banco": "PROPN", "Central": "PROPN", "Brasil": "PROPN", "ONU": "PROPN", "do": "ADP", "e": "CCONJ"}
+    tagger = FakeTagger(names)
+    service = EvidenceSearchService(settings, rules.stopwords, [], acronyms=rules.acronyms, tagger=tagger)
+    keywords = service.extract_keywords("Banco Central do Brasil ONU e taxa")
+    assert "central" not in keywords
+    assert {"banco", "brasil", "onu", "taxa"} == set(keywords)
+
+
+def test_extract_keywords_ignores_generic_terms(settings, rules):
+    tagger = FakeTagger({"rompeu": "VERB"})
+    service = EvidenceSearchService(settings, rules.stopwords, [], tagger=tagger, generic_terms=rules.generic_terms)
+    keywords = service.extract_keywords("Mina rompeu domingo Maceió após anos")
+    assert keywords == ["mina", "maceio", "apos", "rompeu"]
 
 
 def test_extract_keywords_skips_tagger_in_shouting_text(settings, rules):
