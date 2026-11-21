@@ -998,5 +998,505 @@
     "text": "Pra mim o Trump está usando as tarifas só pra pressionar politicamente o Brasil.",
     "expected_claim": null,
     "expected_keywords": []
+  },
+  {
+    "id": "news-brasil-perde-japao-2026",
+    "category": "news",
+    "event": "Japão vence o Brasil por 3 a 2 em amistoso no Estádio Nacional de Singapura (14/11/2026), noticiado pela Folha",
+    "veracity": "true",
+    "title": null,
+    "text": "Brasil perde para o Japão de 3x2 no dia no amistoso em 14/11/2026",
+    "expected_claim": "Brasil perde para o Japão de 3x2 no amistoso em 14/11/2026",
+    "expected_keywords": ["brasil", "japao", "perde"]
+  },
+  {
+    "id": "news-brasil-goleia-singapura",
+    "category": "news",
+    "event": "Brasil vence Singapura por 7 a 0 com hat-trick de Vini Jr. no último jogo de 2026, noticiado por CNN Brasil e Veja",
+    "veracity": "true",
+    "title": "Vini Jr faz hat-trick e Brasil encerra 2026 com 7 a 0 sobre Singapura",
+    "text": "O último amistoso da Seleção Brasileira foi em ritmo de treino. Em um Estádio Nacional vazio, o Brasil não tomou conhecimento da equipe local e goleou Singapura por 7 a 0",
+    "expected_claim": "Vini Jr faz hat-trick e Brasil encerra 2026 com 7 a 0 sobre Singapura",
+    "expected_keywords": ["singapura", "brasil", "vini"]
+  },
+  {
+    "id": "news-guaiba-recorde-enchente",
+    "category": "news",
+    "event": "Guaíba atinge o nível recorde de 5,35 metros nas enchentes do RS (05/05/2024)",
+    "veracity": "true",
+    "title": "Guaíba atinge 5,35 metros e supera a cheia histórica de 1941",
+    "text": "O nível do Guaíba chegou a 5,35 metros em Porto Alegre, a maior marca já registrada. A água invadiu o Centro Histórico e bairros da zona norte da capital gaúcha.",
+    "expected_claim": "Guaíba atinge 5,35 metros e supera a cheia histórica de 1941",
+    "expected_keywords": ["guaiba", "cheia", "metros"]
+  },
+  {
+    "id": "news-queda-ponte-tocantins-maranhao",
+    "category": "news",
+    "event": "Desabamento da ponte Juscelino Kubitschek entre Tocantins e Maranhão (22/12/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "A ponte Juscelino Kubitschek de Oliveira, que liga Aguiarnópolis, no Tocantins, a Estreito, no Maranhão, desabou neste domingo. Caminhões e carros caíram no rio Tocantins. A Marinha e o Corpo de Bombeiros fazem buscas pelas vítimas.",
+    "expected_claim": "A ponte Juscelino Kubitschek de Oliveira, que liga Aguiarnópolis, no Tocantins, a Estreito, no Maranhão, desabou neste domingo.",
+    "expected_keywords": ["ponte", "desabou", "tocantins"]
+  },
+  {
+    "id": "news-morte-pele",
+    "category": "news",
+    "event": "Morte de Pelé no Hospital Albert Einstein (29/12/2022)",
+    "veracity": "true",
+    "title": "Pelé morre aos 82 anos em São Paulo",
+    "text": "Edson Arantes do Nascimento estava internado no Hospital Israelita Albert Einstein desde novembro para tratar um câncer no cólon. O tricampeão mundial é considerado o maior jogador de futebol de todos os tempos.",
+    "expected_claim": "Pelé morre aos 82 anos em São Paulo",
+    "expected_keywords": ["pele", "morre"]
+  },
+  {
+    "id": "news-lula-eleito-2022",
+    "category": "news",
+    "event": "Lula vence Bolsonaro no segundo turno da eleição presidencial (30/10/2022)",
+    "veracity": "true",
+    "title": null,
+    "text": "Luiz Inácio Lula da Silva foi eleito presidente do Brasil pela terceira vez, com 50,9% dos votos válidos no segundo turno. Jair Bolsonaro teve 49,1%. Foi a disputa mais apertada desde a redemocratização.",
+    "expected_claim": "Luiz Inácio Lula da Silva foi eleito presidente do Brasil pela terceira vez, com 50,9% dos votos válidos no segundo turno.",
+    "expected_keywords": ["lula", "eleito", "presidente"]
+  },
+  {
+    "id": "news-ataques-8-de-janeiro",
+    "category": "news",
+    "event": "Invasão e depredação das sedes dos Três Poderes em Brasília (08/01/2023)",
+    "veracity": "true",
+    "title": "Manifestantes invadem Congresso, Planalto e STF em Brasília",
+    "text": "Apoiadores do ex-presidente Jair Bolsonaro romperam o bloqueio policial na Esplanada dos Ministérios e depredaram as sedes dos Três Poderes neste domingo. Centenas de pessoas foram presas.",
+    "expected_claim": "Manifestantes invadem Congresso, Planalto e STF em Brasília",
+    "expected_keywords": ["stf", "congresso", "planalto"]
+  },
+  {
+    "id": "news-brasil-eliminado-croacia",
+    "category": "news",
+    "event": "Brasil é eliminado pela Croácia nos pênaltis nas quartas da Copa do Catar (09/12/2022)",
+    "veracity": "true",
+    "title": "Brasil perde para a Croácia nos pênaltis e está fora da Copa do Mundo",
+    "text": "A seleção empatou por 1 a 1 na prorrogação, com gol de Neymar, mas Rodrygo e Marquinhos desperdiçaram suas cobranças. É a segunda eliminação seguida do Brasil nas quartas de final.",
+    "expected_claim": "Brasil perde para a Croácia nos pênaltis e está fora da Copa do Mundo",
+    "expected_keywords": ["croacia", "brasil", "penaltis"]
+  },
+  {
+    "id": "news-lancamento-pix",
+    "category": "news",
+    "event": "Banco Central lança oficialmente o Pix (16/11/2020)",
+    "veracity": "true",
+    "title": null,
+    "text": "O Banco Central colocou em funcionamento nesta segunda-feira o Pix, sistema de pagamentos instantâneos que funciona 24 horas por dia, inclusive nos fins de semana. As transferências entre pessoas físicas são gratuitas.",
+    "expected_claim": "O Banco Central colocou em funcionamento nesta segunda-feira o Pix, sistema de pagamentos instantâneos que funciona 24 horas por dia, inclusive nos fins de semana.",
+    "expected_keywords": ["pix", "banco", "central"]
+  },
+  {
+    "id": "news-reforma-tributaria-promulgada",
+    "category": "news",
+    "event": "Congresso promulga a reforma tributária (20/12/2023)",
+    "veracity": "true",
+    "title": "Congresso promulga a reforma tributária após mais de 30 anos de debate",
+    "text": "A emenda constitucional substitui cinco tributos sobre o consumo por um imposto sobre valor agregado dividido entre a União, os estados e os municípios. A transição começa em 2026.",
+    "expected_claim": "Congresso promulga a reforma tributária após mais de 30 anos de debate",
+    "expected_keywords": ["reforma", "tributaria", "promulga"]
+  },
+  {
+    "id": "news-trump-eleito-2024",
+    "category": "news",
+    "event": "Donald Trump é eleito presidente dos Estados Unidos (06/11/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Donald Trump venceu Kamala Harris e foi eleito o 47º presidente dos Estados Unidos. O republicano garantiu mais de 270 delegados no Colégio Eleitoral após vencer na Pensilvânia.",
+    "expected_claim": "Donald Trump venceu Kamala Harris e foi eleito o 47º presidente dos Estados Unidos.",
+    "expected_keywords": ["trump", "kamala", "eleito"]
+  },
+  {
+    "id": "news-rompimento-brumadinho",
+    "category": "news",
+    "event": "Rompimento da barragem da Vale em Brumadinho (25/01/2019)",
+    "veracity": "true",
+    "title": "Barragem da Vale se rompe em Brumadinho e lama atinge área administrativa",
+    "text": "A barragem 1 da mina Córrego do Feijão rompeu no início da tarde desta sexta-feira. A lama de rejeitos de minério atingiu o refeitório da empresa e casas da comunidade do Parque da Cachoeira.",
+    "expected_claim": "Barragem da Vale se rompe em Brumadinho e lama atinge área administrativa",
+    "expected_keywords": ["brumadinho", "barragem", "vale"]
+  },
+  {
+    "id": "news-mina-braskem-maceio",
+    "category": "news",
+    "event": "Rompimento da mina 18 da Braskem em Maceió (10/12/2023)",
+    "veracity": "true",
+    "title": null,
+    "text": "A mina 18 da Braskem rompeu neste domingo sob a Lagoa Mundaú, no bairro do Mutange, em Maceió. A área já estava desocupada, e a Defesa Civil informou que não há risco para a população.",
+    "expected_claim": "A mina 18 da Braskem rompeu neste domingo sob a Lagoa Mundaú, no bairro do Mutange, em Maceió.",
+    "expected_keywords": ["braskem", "mina", "maceio"]
+  },
+  {
+    "id": "news-salario-minimo-2025",
+    "category": "news",
+    "event": "Salário mínimo de 2025 fixado em R$ 1.518 (dezembro de 2024)",
+    "veracity": "true",
+    "title": "Salário mínimo será de R$ 1.518 em 2025",
+    "text": "O decreto publicado no Diário Oficial fixa o novo valor a partir de 1º de janeiro. O reajuste de 7,5% segue a nova regra que limita o ganho real ao teto do arcabouço fiscal.",
+    "expected_claim": "Salário mínimo será de R$ 1.518 em 2025",
+    "expected_keywords": ["salario", "minimo"]
+  },
+  {
+    "id": "news-beatriz-souza-ouro-judo",
+    "category": "news",
+    "event": "Beatriz Souza conquista o primeiro ouro do Brasil em Paris 2024 no judô (02/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "A judoca Beatriz Souza conquistou a medalha de ouro na categoria acima de 78 kg nos Jogos de Paris. Foi o primeiro ouro do Brasil nesta edição da Olimpíada.",
+    "expected_claim": "A judoca Beatriz Souza conquistou a medalha de ouro na categoria acima de 78 kg nos Jogos de Paris.",
+    "expected_keywords": ["beatriz", "souza", "ouro"]
+  },
+  {
+    "id": "news-vini-jr-the-best",
+    "category": "news",
+    "event": "Vinicius Júnior eleito o melhor jogador do mundo no prêmio Fifa The Best (17/12/2024)",
+    "veracity": "true",
+    "title": "Vini Jr. é eleito o melhor jogador do mundo pela Fifa",
+    "text": "O atacante do Real Madrid venceu o prêmio The Best em cerimônia realizada em Doha, no Catar. Ele é o primeiro brasileiro a receber a honraria desde Kaká, em 2007.",
+    "expected_claim": "Vini Jr. é eleito o melhor jogador do mundo pela Fifa",
+    "expected_keywords": ["fifa", "vini", "jogador"]
+  },
+  {
+    "id": "news-oms-emergencia-mpox",
+    "category": "news",
+    "event": "OMS declara emergência de saúde pública internacional por mpox (14/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "A Organização Mundial da Saúde declarou a mpox emergência de saúde pública de importância internacional. A decisão foi motivada pelo avanço de uma nova variante do vírus na República Democrática do Congo e em países vizinhos.",
+    "expected_claim": "A Organização Mundial da Saúde declarou a mpox emergência de saúde pública de importância internacional.",
+    "expected_keywords": ["mpox", "emergencia", "saude"]
+  },
+  {
+    "id": "news-apagao-nacional-2023",
+    "category": "news",
+    "event": "Apagão atinge 25 estados e o Distrito Federal (15/08/2023)",
+    "veracity": "true",
+    "title": "Apagão deixa 25 estados e o Distrito Federal sem energia",
+    "text": "A falha ocorreu por volta das 8h30 e interrompeu o fornecimento em todas as regiões, exceto Roraima, que não é ligada ao sistema nacional. O Operador Nacional do Sistema Elétrico investiga a causa.",
+    "expected_claim": "Apagão deixa 25 estados e o Distrito Federal sem energia",
+    "expected_keywords": ["apagao", "energia", "estados"]
+  },
+  {
+    "id": "whatsapp-vacina-altera-dna",
+    "category": "whatsapp",
+    "event": "Boato de que as vacinas de RNA mensageiro contra a Covid alteram o DNA (2020-2021)",
+    "veracity": "false",
+    "title": null,
+    "text": "Não tomem essa vacina!!! A vacina de RNA da Covid altera o DNA da pessoa para sempre, quem tomar vira cobaia. Os cientistas estão escondendo. Repassem",
+    "expected_claim": "A vacina de RNA da Covid altera o DNA da pessoa para sempre",
+    "expected_keywords": ["vacina", "dna", "altera"]
+  },
+  {
+    "id": "whatsapp-agua-quente-coronavirus",
+    "category": "whatsapp",
+    "event": "Boato de que beber água quente mata o coronavírus (março de 2020)",
+    "veracity": "false",
+    "title": null,
+    "text": "Recebi de uma enfermeira: beber água quente de 15 em 15 minutos mata o coronavírus na garganta antes de chegar no pulmão. Mandem pra todo mundo!!",
+    "expected_claim": "Beber água quente de 15 em 15 minutos mata o coronavírus na garganta",
+    "expected_keywords": ["agua", "quente", "coronavirus"]
+  },
+  {
+    "id": "whatsapp-whatsapp-pago",
+    "category": "whatsapp",
+    "event": "Boato recorrente de que o WhatsApp vai passar a ser pago",
+    "veracity": "false",
+    "title": null,
+    "text": "Aviso importante!!! A partir de amanhã o WhatsApp vai cobrar 0,37 centavos por mensagem. Para continuar grátis envie essa mensagem para 10 contatos",
+    "expected_claim": "O WhatsApp vai cobrar 0,37 centavos por mensagem",
+    "expected_keywords": ["whatsapp", "cobrar", "mensagem"]
+  },
+  {
+    "id": "whatsapp-limao-bicarbonato-covid",
+    "category": "whatsapp",
+    "event": "Boato de que limão com bicarbonato cura a Covid (2020)",
+    "veracity": "false",
+    "title": null,
+    "text": "Gente façam isso em casa: chá de limão com bicarbonato bem quente cura o coronavírus, é uma receita que veio de Israel. Ninguém na TV fala porque não dá lucro",
+    "expected_claim": "Chá de limão com bicarbonato cura o coronavírus",
+    "expected_keywords": ["limao", "bicarbonato", "coronavirus"]
+  },
+  {
+    "id": "whatsapp-urna-autocompleta",
+    "category": "whatsapp",
+    "event": "Boato de urna eletrônica que completava o voto sozinha, desmentido pelo TSE (outubro de 2018)",
+    "veracity": "false",
+    "title": null,
+    "text": "Vejam o vídeo!!! A urna eletrônica está completando o voto sozinha com o número 13 quando a pessoa aperta o 1. É fraude! Denunciem no TSE",
+    "expected_claim": "A urna eletrônica está completando o voto sozinha com o número 13",
+    "expected_keywords": ["urna", "voto", "eletronica"]
+  },
+  {
+    "id": "whatsapp-marielle-marcinho-vp",
+    "category": "whatsapp",
+    "event": "Boato de que Marielle Franco era casada com o traficante Marcinho VP (março de 2018)",
+    "veracity": "false",
+    "title": null,
+    "text": "Vocês sabiam? A Marielle Franco era casada com o Marcinho VP e foi eleita pelo Comando Vermelho. A mídia está escondendo isso",
+    "expected_claim": "Marielle Franco era casada com o Marcinho VP",
+    "expected_keywords": ["marielle", "marcinho", "casada"]
+  },
+  {
+    "id": "whatsapp-kit-gay-escolas",
+    "category": "whatsapp",
+    "event": "Boato do kit gay distribuído nas escolas por Haddad, mandado remover pelo TSE (eleição de 2018)",
+    "veracity": "false",
+    "title": null,
+    "text": "Pais fiquem de olho!!! O Haddad distribuiu o kit gay nas escolas quando era ministro da Educação, com livro ensinando sexo para crianças de 6 anos. Divulguem",
+    "expected_claim": "Haddad distribuiu o kit gay nas escolas quando era ministro da Educação",
+    "expected_keywords": ["haddad", "kit", "escolas"]
+  },
+  {
+    "id": "whatsapp-bill-gates-vacina",
+    "category": "whatsapp",
+    "event": "Boato de que Bill Gates quer reduzir a população mundial com vacinas (2020)",
+    "veracity": "false",
+    "title": null,
+    "text": "Acordem!! O Bill Gates admitiu que quer usar as vacinas pra reduzir a população do mundo em 15%. Está no vídeo dele, procurem",
+    "expected_claim": "Bill Gates admitiu que quer usar as vacinas para reduzir a população do mundo",
+    "expected_keywords": ["gates", "vacinas", "populacao"]
+  },
+  {
+    "id": "whatsapp-guaiba-5-metros",
+    "category": "whatsapp",
+    "event": "Guaíba atinge o nível recorde de 5,35 metros nas enchentes do RS (05/05/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Pessoal de Porto Alegre o Guaíba passou dos 5 metros, maior cheia da história 😰 saiam das áreas baixas e não voltem pra casa ainda",
+    "expected_claim": "O Guaíba passou dos 5 metros, maior cheia da história",
+    "expected_keywords": ["guaiba", "metros", "cheia"]
+  },
+  {
+    "id": "whatsapp-ponte-caiu-tocantins",
+    "category": "whatsapp",
+    "event": "Desabamento da ponte Juscelino Kubitschek entre Tocantins e Maranhão (22/12/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Meu Deus gente a ponte entre Tocantins e Maranhão lá em Estreito caiu agora com caminhão em cima 😱 quem tiver parente que passa por lá avisa",
+    "expected_claim": "A ponte entre Tocantins e Maranhão em Estreito caiu",
+    "expected_keywords": ["ponte", "tocantins", "maranhao"]
+  },
+  {
+    "id": "whatsapp-morte-pele",
+    "category": "whatsapp",
+    "event": "Morte de Pelé no Hospital Albert Einstein (29/12/2022)",
+    "veracity": "true",
+    "title": null,
+    "text": "Infelizmente confirmaram agora, o Pelé morreu no Einstein 😢 o rei do futebol se foi",
+    "expected_claim": "Pelé morreu no Einstein",
+    "expected_keywords": ["pele", "morreu"]
+  },
+  {
+    "id": "whatsapp-vini-melhor-do-mundo",
+    "category": "whatsapp",
+    "event": "Vinicius Júnior eleito o melhor jogador do mundo no prêmio Fifa The Best (17/12/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "É DO BRASIL!!! O Vini Jr ganhou o The Best da Fifa e é o melhor jogador do mundo, primeiro brasileiro desde o Kaká 🇧🇷🇧🇷",
+    "expected_claim": "O Vini Jr ganhou o The Best da Fifa e é o melhor jogador do mundo",
+    "expected_keywords": ["vini", "fifa", "jogador"]
+  },
+  {
+    "id": "whatsapp-mpox-emergencia",
+    "category": "whatsapp",
+    "event": "OMS declara emergência de saúde pública internacional por mpox (14/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Gente a OMS declarou emergência mundial por causa da mpox de novo, tem uma variante nova na África. Fiquem atentos aos sintomas",
+    "expected_claim": "A OMS declarou emergência mundial por causa da mpox",
+    "expected_keywords": ["oms", "mpox", "emergencia"]
+  },
+  {
+    "id": "whatsapp-apagao-25-estados",
+    "category": "whatsapp",
+    "event": "Apagão atinge 25 estados e o Distrito Federal (15/08/2023)",
+    "veracity": "true",
+    "title": null,
+    "text": "Não é só aí não, o apagão pegou 25 estados, deu no jornal agora. Só Roraima escapou. Desliguem os aparelhos da tomada",
+    "expected_claim": "O apagão atingiu 25 estados",
+    "expected_keywords": ["apagao", "estados"]
+  },
+  {
+    "id": "whatsapp-beatriz-souza-ouro",
+    "category": "whatsapp",
+    "event": "Beatriz Souza conquista o primeiro ouro do Brasil em Paris 2024 no judô (02/08/2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "OUROOOO 🥇 a Beatriz Souza ganhou a medalha de ouro no judô, primeiro ouro do Brasil em Paris!!! Que orgulho",
+    "expected_claim": "Beatriz Souza ganhou a medalha de ouro no judô",
+    "expected_keywords": ["beatriz", "souza", "ouro"]
+  },
+  {
+    "id": "whatsapp-salario-minimo-1518",
+    "category": "whatsapp",
+    "event": "Salário mínimo de 2025 fixado em R$ 1.518 (dezembro de 2024)",
+    "veracity": "true",
+    "title": null,
+    "text": "Saiu no Diário Oficial, o salário mínimo de 2025 vai ser 1.518 reais. Já vale a partir de janeiro, confere aí no seu contracheque",
+    "expected_claim": "O salário mínimo de 2025 vai ser 1.518 reais",
+    "expected_keywords": ["salario", "minimo"]
+  },
+  {
+    "id": "clickbait-brumadinho",
+    "category": "clickbait_title",
+    "event": "Rompimento da barragem da Vale em Brumadinho (25/01/2019)",
+    "veracity": "true",
+    "title": "Tragédia sem precedentes choca Minas Gerais",
+    "text": "A barragem da mina Córrego do Feijão, da Vale, rompeu em Brumadinho e a lama de rejeitos atingiu a área administrativa da empresa. Equipes de resgate procuram centenas de desaparecidos.",
+    "expected_claim": "A barragem da mina Córrego do Feijão, da Vale, rompeu em Brumadinho e a lama de rejeitos atingiu a área administrativa da empresa.",
+    "expected_keywords": ["brumadinho", "barragem", "vale"]
+  },
+  {
+    "id": "clickbait-morte-pele",
+    "category": "clickbait_title",
+    "event": "Morte de Pelé no Hospital Albert Einstein (29/12/2022)",
+    "veracity": "true",
+    "title": "O mundo do futebol está de luto",
+    "text": "Pelé morreu nesta quinta-feira, aos 82 anos, no Hospital Israelita Albert Einstein, em São Paulo. Ele tratava um câncer no cólon desde 2021.",
+    "expected_claim": "Pelé morreu nesta quinta-feira, aos 82 anos, no Hospital Israelita Albert Einstein, em São Paulo.",
+    "expected_keywords": ["pele", "morreu", "einstein"]
+  },
+  {
+    "id": "clickbait-8-de-janeiro",
+    "category": "clickbait_title",
+    "event": "Invasão e depredação das sedes dos Três Poderes em Brasília (08/01/2023)",
+    "veracity": "true",
+    "title": "Cenas inacreditáveis na capital do país neste domingo",
+    "text": "Manifestantes invadiram e depredaram o Congresso Nacional, o Palácio do Planalto e o prédio do Supremo Tribunal Federal, em Brasília. A Polícia Militar retomou o controle no fim da tarde.",
+    "expected_claim": "Manifestantes invadiram e depredaram o Congresso Nacional, o Palácio do Planalto e o prédio do Supremo Tribunal Federal, em Brasília.",
+    "expected_keywords": ["congresso", "planalto", "supremo"]
+  },
+  {
+    "id": "clickbait-eliminacao-croacia",
+    "category": "clickbait_title",
+    "event": "Brasil é eliminado pela Croácia nos pênaltis nas quartas da Copa do Catar (09/12/2022)",
+    "veracity": "true",
+    "title": "O sonho do hexa acabou de um jeito que ninguém imaginava",
+    "text": "A seleção brasileira foi eliminada pela Croácia nos pênaltis, nas quartas de final da Copa do Mundo do Catar. O jogo terminou empatado por 1 a 1 na prorrogação.",
+    "expected_claim": "A seleção brasileira foi eliminada pela Croácia nos pênaltis, nas quartas de final da Copa do Mundo do Catar.",
+    "expected_keywords": ["croacia", "selecao", "eliminada"]
+  },
+  {
+    "id": "clickbait-trump-eleito",
+    "category": "clickbait_title",
+    "event": "Donald Trump é eleito presidente dos Estados Unidos (06/11/2024)",
+    "veracity": "true",
+    "title": "Resultado que vai mexer com o mundo inteiro",
+    "text": "Donald Trump foi eleito presidente dos Estados Unidos ao derrotar a democrata Kamala Harris. Ele volta à Casa Branca quatro anos depois de deixar o cargo.",
+    "expected_claim": "Donald Trump foi eleito presidente dos Estados Unidos ao derrotar a democrata Kamala Harris.",
+    "expected_keywords": ["trump", "kamala", "eleito"]
+  },
+  {
+    "id": "clickbait-ponte-tocantins",
+    "category": "clickbait_title",
+    "event": "Desabamento da ponte Juscelino Kubitschek entre Tocantins e Maranhão (22/12/2024)",
+    "veracity": "true",
+    "title": "Momento assustador foi filmado por quem estava lá",
+    "text": "A ponte que liga Tocantins e Maranhão sobre o rio Tocantins desabou e caminhões caíram na água. O vereador que filmava as rachaduras gravou o momento da queda.",
+    "expected_claim": "A ponte que liga Tocantins e Maranhão sobre o rio Tocantins desabou e caminhões caíram na água.",
+    "expected_keywords": ["ponte", "desabou", "tocantins"]
+  },
+  {
+    "id": "clickbait-vini-the-best",
+    "category": "clickbait_title",
+    "event": "Vinicius Júnior eleito o melhor jogador do mundo no prêmio Fifa The Best (17/12/2024)",
+    "veracity": "true",
+    "title": "Finalmente aconteceu depois de 17 anos de espera",
+    "text": "Vinicius Júnior foi eleito o melhor jogador do mundo no prêmio The Best da Fifa. O último brasileiro a vencer tinha sido Kaká, em 2007.",
+    "expected_claim": "Vinicius Júnior foi eleito o melhor jogador do mundo no prêmio The Best da Fifa.",
+    "expected_keywords": ["vinicius", "fifa", "jogador"]
+  },
+  {
+    "id": "clickbait-beatriz-souza",
+    "category": "clickbait_title",
+    "event": "Beatriz Souza conquista o primeiro ouro do Brasil em Paris 2024 no judô (02/08/2024)",
+    "veracity": "true",
+    "title": "Que dia para o esporte brasileiro!",
+    "text": "A judoca Beatriz Souza conquistou a primeira medalha de ouro do Brasil nos Jogos Olímpicos de Paris. Ela venceu a israelense Raz Hershko na final da categoria acima de 78 kg.",
+    "expected_claim": "A judoca Beatriz Souza conquistou a primeira medalha de ouro do Brasil nos Jogos Olímpicos de Paris.",
+    "expected_keywords": ["beatriz", "souza", "ouro"]
+  },
+  {
+    "id": "clickbait-braskem-maceio",
+    "category": "clickbait_title",
+    "event": "Rompimento da mina 18 da Braskem em Maceió (10/12/2023)",
+    "veracity": "true",
+    "title": "O que os moradores temiam finalmente aconteceu",
+    "text": "A mina 18 da Braskem rompeu sob a Lagoa Mundaú, no bairro do Mutange, em Maceió. A região já tinha sido evacuada por causa do afundamento do solo.",
+    "expected_claim": "A mina 18 da Braskem rompeu sob a Lagoa Mundaú, no bairro do Mutange, em Maceió.",
+    "expected_keywords": ["braskem", "mina", "maceio"]
+  },
+  {
+    "id": "clickbait-lancamento-pix",
+    "category": "clickbait_title",
+    "event": "Banco Central lança oficialmente o Pix (16/11/2020)",
+    "veracity": "true",
+    "title": "A mudança que vai transformar o jeito de pagar as contas",
+    "text": "O Banco Central lançou o Pix, sistema de pagamentos instantâneos que permite transferir dinheiro a qualquer hora do dia. As transferências entre pessoas físicas não têm custo.",
+    "expected_claim": "O Banco Central lançou o Pix, sistema de pagamentos instantâneos que permite transferir dinheiro a qualquer hora do dia.",
+    "expected_keywords": ["pix", "banco", "central"]
+  },
+  {
+    "id": "clickbait-apagao-2023",
+    "category": "clickbait_title",
+    "event": "Apagão atinge 25 estados e o Distrito Federal (15/08/2023)",
+    "veracity": "true",
+    "title": "Manhã de caos em quase todo o país",
+    "text": "Um apagão deixou 25 estados e o Distrito Federal sem energia elétrica na manhã desta terça-feira. Apenas Roraima, que não é ligada ao sistema nacional, não foi afetada.",
+    "expected_claim": "Um apagão deixou 25 estados e o Distrito Federal sem energia elétrica na manhã desta terça-feira.",
+    "expected_keywords": ["apagao", "energia", "estados"]
+  },
+  {
+    "id": "clickbait-reforma-tributaria",
+    "category": "clickbait_title",
+    "event": "Congresso promulga a reforma tributária (20/12/2023)",
+    "veracity": "true",
+    "title": "Mudança histórica nos impostos que você paga",
+    "text": "O Congresso Nacional promulgou a reforma tributária, que troca cinco tributos sobre o consumo por um imposto sobre valor agregado. A transição para o novo modelo começa em 2026.",
+    "expected_claim": "O Congresso Nacional promulgou a reforma tributária, que troca cinco tributos sobre o consumo por um imposto sobre valor agregado.",
+    "expected_keywords": ["reforma", "tributaria", "congresso"]
+  },
+  {
+    "id": "clickbait-vacina-dna",
+    "category": "clickbait_title",
+    "event": "Boato de que as vacinas de RNA mensageiro contra a Covid alteram o DNA (2020-2021)",
+    "veracity": "false",
+    "title": "O que não te contaram sobre a vacina",
+    "text": "As vacinas de RNA mensageiro contra a Covid alteram o DNA de quem as recebe de forma permanente. Os efeitos só vão aparecer daqui a alguns anos.",
+    "expected_claim": "As vacinas de RNA mensageiro contra a Covid alteram o DNA de quem as recebe de forma permanente.",
+    "expected_keywords": ["vacinas", "dna", "covid"]
+  },
+  {
+    "id": "clickbait-whatsapp-pago",
+    "category": "clickbait_title",
+    "event": "Boato recorrente de que o WhatsApp vai passar a ser pago",
+    "veracity": "false",
+    "title": "Aproveite enquanto ainda é de graça",
+    "text": "O WhatsApp vai começar a cobrar uma taxa mensal de todos os usuários brasileiros a partir do mês que vem. Quem não pagar terá a conta desativada.",
+    "expected_claim": "O WhatsApp vai começar a cobrar uma taxa mensal de todos os usuários brasileiros a partir do mês que vem.",
+    "expected_keywords": ["whatsapp", "cobrar", "taxa"]
+  },
+  {
+    "id": "clickbait-kit-gay",
+    "category": "clickbait_title",
+    "event": "Boato do kit gay distribuído nas escolas por Haddad, mandado remover pelo TSE (eleição de 2018)",
+    "veracity": "false",
+    "title": "Pais, vocês precisam ver isso urgentemente",
+    "text": "Fernando Haddad distribuiu um kit gay nas escolas públicas quando era ministro da Educação. O material incluía um livro sobre sexo para crianças.",
+    "expected_claim": "Fernando Haddad distribuiu um kit gay nas escolas públicas quando era ministro da Educação.",
+    "expected_keywords": ["haddad", "kit", "escolas"]
+  },
+  {
+    "id": "clickbait-marielle-marcinho-vp",
+    "category": "clickbait_title",
+    "event": "Boato de que Marielle Franco era casada com o traficante Marcinho VP (março de 2018)",
+    "veracity": "false",
+    "title": "A verdade que a imprensa não quer mostrar",
+    "text": "A vereadora Marielle Franco era casada com o traficante Marcinho VP e foi eleita com o apoio do Comando Vermelho.",
+    "expected_claim": "A vereadora Marielle Franco era casada com o traficante Marcinho VP e foi eleita com o apoio do Comando Vermelho.",
+    "expected_keywords": ["marielle", "marcinho", "casada"]
   }
 ]

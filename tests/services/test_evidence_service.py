@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from app.core.exceptions import ServiceUnavailableError
-from app.services.evidence_service import EvidenceService
+from app.services.evidence_service import EvidenceService, to_hypothesis
 from tests.fakes import FakeEntailmentModel, make_outcome, make_result
 
 CLAIM = "Ivermectina tem 70% de eficácia contra a Covid, diz estudo"
@@ -186,10 +186,54 @@ def test_model_needs_the_claim_proper_nouns_in_the_headline(settings, verificati
     assert all(e.entailment is None for e in evidences)
 
 
+def test_model_needs_a_fact_word_besides_the_names(settings, verification_config, registry, rules):
+    # Mesmos nomes (Brasil, Japão), outro fato: o modelo real deu 0,7 de implicação para esta checagem
+    headline = "É falso que Brasil virou desenho animado no Japão com Iron Tariffs"
+    excerpt = "Circulam mensagens afirmando que o caso das tarifas teria virado um desenho animado no Japão."
+    service = with_model(settings, verification_config, registry, rules, {f"{headline}. {excerpt}": 0.71})
+    evidences = build_for(service, verification_config, "Brasil perde para o Japão de 3x2 no amistoso", {
+        "boatos": [make_result(headline, "https://www.boatos.org/brasil/desenho-japao.html", excerpt=excerpt)],
+    })
+    assert all(e.stance == "neutral" for e in evidences)
+    assert all(e.entailment is None for e in evidences)
+
+
+def test_identical_headline_supports_even_when_model_disagrees(settings, verification_config, registry, rules):
+    # O modelo real deu 0,48 para esta manchete contra ela mesma
+    headline = "Vini Jr faz hat-trick e Brasil encerra 2026 com 7 a 0 sobre Singapura"
+    service = with_model(settings, verification_config, registry, rules, {headline: 0.48})
+    evidences = build_for(service, verification_config, headline, {
+        "cnn_brasil": [make_result(headline, "https://www.cnnbrasil.com.br/esportes/vini-singapura")],
+    })
+    assert evidences[0].stance == "supports"
+
+
+def test_model_compares_the_claim_without_date_and_with_written_score(settings, verification_config, registry, rules):
+    headline = "Brasil leva gol no fim e perde duelo com o Japão"
+    excerpt = "Um gol nos acréscimos definiu a vitória por 3 a 2 do Japão sobre o Brasil em amistoso."
+    model = FakeEntailmentModel({excerpt: 0.94})
+    service = EvidenceService(settings, verification_config, registry, rules.stopwords, entailment_model=model)
+    evidences = build_for(service, verification_config, "Brasil perde para o Japão de 3x2 no amistoso em 14/11/2026", {
+        "folha": [make_result(headline, "https://www1.folha.uol.com.br/esporte/japao.shtml", excerpt=excerpt)],
+    })
+    assert model.hypotheses == ["Brasil perde para o Japão de 3 a 2 no amistoso"]
+    assert evidences[0].stance == "supports"
+
+
+@pytest.mark.parametrize(("claim", "hypothesis"), [
+    ("Brasil perde para o Japão de 3x2 no dia 14/11/2026", "Brasil perde para o Japão de 3 a 2"),
+    ("Lula sanciona a lei em 05/01/2025 em Brasília", "Lula sanciona a lei em Brasília"),
+    ("Seedorf é o novo técnico do Corinthians", "Seedorf é o novo técnico do Corinthians"),
+])
+def test_to_hypothesis(claim, hypothesis):
+    assert to_hypothesis(claim) == hypothesis
+
+
 def test_model_reads_the_excerpt_along_with_the_headline(settings, verification_config, registry, rules):
     headline = "Paquetá aprova empate do Flamengo com o Estudiantes"
     excerpt = "Equipes ficaram no 0 a 0 pela semifinal da Copa Libertadores"
-    service = with_model(settings, verification_config, registry, rules, {f"{headline}. {excerpt}": 0.99})
+    # A frase do resumo vai separada da manchete; vale a maior nota
+    service = with_model(settings, verification_config, registry, rules, {headline: 0.1, excerpt: 0.99})
     evidences = build_for(service, verification_config, "Flamengo empata com Estudiantes pela libertadores", {
         "cnn_brasil": [make_result(headline, "https://www.cnnbrasil.com.br/esportes/paqueta", excerpt=excerpt)],
     })
