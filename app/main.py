@@ -16,6 +16,7 @@ from app.core.security import add_security_headers, limiter
 from app.database.session import get_db
 from app.integrations.web_page_client import WebPageClient
 from app.ml.entailment_model import EntailmentModel
+from app.ml.part_of_speech_tagger import PartOfSpeechTagger
 from app.services.analysis_rules_service import load_analysis_rules
 from app.services.content_extraction_service import ContentExtractionService
 from app.services.evidence_search_service import EvidenceSearchService
@@ -43,6 +44,7 @@ def log_startup_banner(settings: Settings, verification_service: VerificationSer
         f"Busca:        {', '.join(search.provider_names) if search else 'desativada'}",
         f"Leitura URL:  {'ativada' if settings.page_fetch_enabled else 'desativada'}",
         f"Modelo NLI:   {'ativado' if verification_service.entailment_enabled else 'desativado'}",
+        f"Gramática:    {'ativada' if search and search.tagger else 'desativada'}",
     ]
     width = max(len(line) for line in lines) + 4
     logger.info("=" * width)
@@ -69,6 +71,17 @@ def load_entailment_model(settings: Settings) -> EntailmentModel | None:
         return None
 
 
+def load_part_of_speech_tagger(settings: Settings) -> PartOfSpeechTagger | None:
+    if not settings.pos_tagger_enabled:
+        return None
+    try:
+        return PartOfSpeechTagger.load(settings.pos_tagger_model)
+    except Exception:
+        # Sem o modelo a busca continua, escolhendo as palavras-chave pela letra maiúscula
+        logger.exception("Não foi possível carregar o modelo %s; usando só as regras", settings.pos_tagger_model)
+        return None
+
+
 def build_verification_service(
     settings: Settings, registry: SourceRegistry, http_client: httpx.Client
 ) -> VerificationService:
@@ -81,7 +94,8 @@ def build_verification_service(
         rules,
         registry,
         search_service=EvidenceSearchService.build(
-            settings, config, rules.stopwords, http_client, acronyms=rules.acronyms
+            settings, config, rules.stopwords, http_client,
+            acronyms=rules.acronyms, tagger=load_part_of_speech_tagger(settings), generic_terms=rules.generic_terms,
         ),
         evidence_service=EvidenceService(
             settings, config, registry, rules.stopwords, entailment_model=load_entailment_model(settings)

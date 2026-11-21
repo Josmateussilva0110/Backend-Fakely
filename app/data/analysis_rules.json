@@ -267,6 +267,13 @@
     "entenda o que",
     "notícia triste"
   ],
+  "generic_terms": [
+    "domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado",
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+    "novembro", "dezembro",
+    "ano", "anos", "mês", "meses", "semana", "semanas", "dia", "dias", "hora", "horas", "minutos",
+    "hoje", "ontem", "amanhã", "manhã", "tarde", "noite", "partir", "vezes", "parte", "forma"
+  ],
   "style_thresholds": {
     "excess_exclamation_min": 3,
     "uppercase_ratio_min": 0.3

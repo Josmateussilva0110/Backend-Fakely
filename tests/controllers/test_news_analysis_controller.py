@@ -2,6 +2,7 @@ import pytest
 
 from app.core.dependencies import get_content_extraction_service, get_verification_service
 from app.main import app
+from app.models.news_analysis_model import NewsAnalysis
 from app.services.content_extraction_service import ContentExtractionService
 from tests.conftest import NEUTRAL_TEXT, SENSATIONAL_TEXT
 from tests.fakes import FakeSearchService, make_outcome, make_result
@@ -60,7 +61,7 @@ def test_create_returns_report_with_evidences(client, with_search):
     assert body["warnings"]["source_assessment"] == {
         "domain": "blogqualquer.net", "recognized": False, "name": None, "category": None,
     }
-    assert body["evidences"]["supporting"] == [] and body["evidences"]["related"] == []
+    assert body["evidences"]["supporting"] == []
     evidence = body["evidences"]["contradicting"][0]
     assert evidence["url"] == LUPA_FALSE.url
     assert evidence["category"] == "fact_checker"
@@ -79,7 +80,19 @@ def test_without_evidence_result_is_inconclusive(client, with_search):
     assert body["result"]["classification"] == "inconclusive"
     assert body["result"]["confidence"] == "low"
     assert body["warnings"]["style_indicators"]
-    assert body["evidences"] == {"supporting": [], "contradicting": [], "related": []}
+    assert body["evidences"] == {"supporting": [], "contradicting": []}
+
+
+def test_only_decisive_links_are_returned_but_all_are_stored(client, with_search, db_session):
+    # Sobre o assunto, mas não confirma nem contradiz: fica no banco, fora da resposta
+    related = make_result("Ivermectina volta a ser debatida em estudo sobre Covid",
+                          "https://www1.folha.uol.com.br/equilibrioesaude/ivermectina.shtml")
+    with_search({"lupa": [LUPA_FALSE], "folha": [related]})
+    body = client.post(URL, json={"text": NEUTRAL_TEXT, "title": TITLE}).json()
+    returned = [e["url"] for group in body["evidences"].values() for e in group]
+    assert returned == [LUPA_FALSE.url]
+    stored = db_session.get(NewsAnalysis, body["id"])
+    assert {e.url: e.stance for e in stored.evidences} == {LUPA_FALSE.url: "contradicts", related.url: "neutral"}
 
 
 def test_search_disabled_is_inconclusive(client):

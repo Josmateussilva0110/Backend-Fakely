@@ -376,11 +376,10 @@ function renderResult(analysis) {
   const groups = [
     ["Sustentam a afirmação", analysis.evidences.supporting],
     ["Contradizem a afirmação", analysis.evidences.contradicting],
-    ["Relacionadas (sem confirmar nem contradizer)", analysis.evidences.related],
   ];
   if (groups.every(([, items]) => !items.length)) {
     result.append(el("h2", { style: "margin-top:20px" }, "Evidências"),
-      el("p", { class: "muted" }, "Nenhuma publicação correspondente encontrada."));
+      el("p", { class: "muted" }, "Nenhuma publicação confirma ou contradiz a afirmação."));
   }
   for (const [title, items] of groups) {
     if (!items.length) continue;

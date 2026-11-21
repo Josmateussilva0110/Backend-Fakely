@@ -82,6 +82,8 @@ python -m app
 
 Na **primeira execução**, a API baixa o modelo de inferência textual (~1,1 GB) para a pasta `.models/`. Depois disso, ele só é carregado do disco (alguns segundos). Para rodar sem o modelo, defina `NLI_ENABLED=false` no `.env`.
 
+O modelo de classe gramatical do spaCy (`pt_core_news_sm`, ~15 MB), usado para escolher as palavras-chave da busca, já vem no `pip install` e carrega em menos de 1 segundo. Para desligar, defina `POS_TAGGER_ENABLED=false`.
+
 - API: http://localhost:8000/api/v1
 - Documentação: http://localhost:8000/docs
 - Status: http://localhost:8000/health
@@ -179,7 +181,7 @@ A análise (`GET /news-analyses/{id}`) vem agrupada por finalidade:
 | Bloco | Conteúdo |
 |---|---|
 | `result` | Classificação, nível de confiança, justificativa e quantas fontes independentes sustentam ou contradizem |
-| `evidences` | Publicações em três grupos: `supporting`, `contradicting` e `related` (sobre o assunto, sem posição). Cada uma traz `scores` (relevância e implicação) para auditoria |
+| `evidences` | Só as publicações que decidem, em dois grupos: `supporting` e `contradicting`. Cada uma traz `scores` (relevância e implicação) para auditoria. As que não confirmam nem contradizem ficam gravadas no banco, mas não vêm na resposta |
 | `warnings` | Limitações, sinais de estilo e avaliação do site de origem |
 | `verification` | Status da busca, sites consultados e com falha, palavras-chave e versão das regras |
 
