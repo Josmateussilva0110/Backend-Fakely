@@ -69,7 +69,7 @@ class SourceRegistry:
             for domain in source.domains:
                 host, _, path = domain.partition("/")
                 entries.append((host, f"/{path}" if path else "", source))
-        self._entries = sorted(entries, key=lambda e: (len(e[0]) + len(e[1])), reverse=True)
+        self._entries = sorted(entries, key=lambda e: len(e[0]) + len(e[1]), reverse=True)
 
     def find(self, url_or_domain: str | None) -> RegisteredSource | None:
         parts = split_host_path(url_or_domain) if url_or_domain else None

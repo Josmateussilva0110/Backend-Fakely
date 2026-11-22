@@ -28,6 +28,17 @@ class VerificationStatus(str, Enum):
     SKIPPED = "skipped"
 
 
+class Intent(str, Enum):
+    """O que o usuário quer com o texto."""
+
+    CLAIM = "claim"
+    YES_NO_QUESTION = "yes_no_question"
+    OPEN_QUESTION = "open_question"
+    MULTIPLE_CLAIMS = "multiple_claims"
+    PREDICTION = "prediction"
+    OPINION = "opinion"
+
+
 class Confidence(str, Enum):
     HIGH = "high"
     MEDIUM = "medium"
@@ -46,9 +57,7 @@ class NewsAnalysis(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     news_id: Mapped[int] = mapped_column(ForeignKey("news.id", ondelete="CASCADE"), nullable=False, index=True)
     claim: Mapped[str | None] = mapped_column(Text)
-    classification: Mapped[Classification] = mapped_column(
-        _enum_column(Classification, 20), nullable=False, index=True
-    )
+    classification: Mapped[Classification] = mapped_column(_enum_column(Classification, 20), nullable=False, index=True)
     justification: Mapped[str] = mapped_column(Text, nullable=False)
     limitations: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     style_indicators: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
@@ -61,6 +70,8 @@ class NewsAnalysis(Base):
     source_assessment: Mapped[dict | None] = mapped_column(JSON)
     # Vazio nas análises anteriores ao cálculo de confiança
     confidence: Mapped[Confidence | None] = mapped_column(_enum_column(Confidence, 10))
+    # Vazio nas análises anteriores à detecção de intenção
+    intent: Mapped[Intent | None] = mapped_column(_enum_column(Intent, 20))
     method: Mapped[str] = mapped_column(String(50), nullable=False)
     model_version: Mapped[str] = mapped_column(String(50), nullable=False)
     analyzed_at: Mapped[datetime] = mapped_column(

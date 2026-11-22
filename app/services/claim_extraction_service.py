@@ -48,6 +48,9 @@ class ClaimExtractionService:
             claim = None
         return claim[: self.max_length] if claim else None
 
+    def is_long_enough(self, sentence: str) -> bool:
+        return self._word_count(sentence) >= self.min_words
+
     def is_opinion(self, text: str) -> bool:
         """Todas as frases com tamanho suficiente expressam opinião, sem fato verificável."""
         sentences = [s for s in self.split_sentences(text) if self._word_count(s) >= self.min_words]
@@ -91,8 +94,7 @@ class ClaimExtractionService:
 
     def _candidate_sentences(self, text: str) -> list[str]:
         return [
-            s for s in self.split_sentences(text)
-            if self._word_count(s) >= self.min_words and not self._is_opinion(s)
+            s for s in self.split_sentences(text) if self._word_count(s) >= self.min_words and not self._is_opinion(s)
         ]
 
     def _strip_openings(self, sentence: str) -> str:
@@ -101,7 +103,7 @@ class ClaimExtractionService:
             cut = self._label_length(sentence) or self._prefix_length(words)
             if not cut or cut >= len(words):
                 return sentence
-            sentence = sentence[words[cut - 1].end():].lstrip(_LEADING_PUNCTUATION)
+            sentence = sentence[words[cut - 1].end() :].lstrip(_LEADING_PUNCTUATION)
 
     def _prefix_length(self, words: list[re.Match[str]]) -> int:
         tokens = tuple(normalize_text(word.group()) for word in words)
@@ -129,7 +131,8 @@ class ClaimExtractionService:
 
     def _content_words(self, text: str) -> int:
         return sum(
-            1 for token in tokenize(normalize_text(text))
+            1
+            for token in tokenize(normalize_text(text))
             if token not in self.rules.stopwords
             and (len(token) >= MIN_CONTENT_WORD_LENGTH or token in self.rules.acronyms)
         )

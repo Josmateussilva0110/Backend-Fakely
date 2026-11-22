@@ -45,10 +45,13 @@ class VerificationConfig(BaseModel):
     verdict_patterns: VerdictPatterns
     # Termos que, no título de uma reportagem, indicam desmentido ("clube nega que...")
     denial_terms: frozenset[str]
+    # Páginas que reúnem várias checagens ("veja o que já checamos sobre a COP30"): não julgam uma
+    # afirmação, então não têm veredito, mesmo que o resumo fale em "falso"
+    roundup_terms: frozenset[str] = frozenset()
 
-    @field_validator("denial_terms", mode="before")
+    @field_validator("denial_terms", "roundup_terms", mode="before")
     @classmethod
-    def normalize_denial_terms(cls, values: list[str]) -> frozenset[str]:
+    def normalize_terms(cls, values: list[str]) -> frozenset[str]:
         return frozenset(normalize_text(v) for v in values)
 
 

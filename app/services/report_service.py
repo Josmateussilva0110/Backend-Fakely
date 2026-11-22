@@ -32,9 +32,7 @@ class ReportService:
     ) -> Report:
         return Report(
             justification=self.build_justification(decision, sources_checked),
-            limitations=tuple(
-                self.build_limitations(decision, evidences, sources_failed, source_assessment, today)
-            ),
+            limitations=tuple(self.build_limitations(decision, evidences, sources_failed, source_assessment, today)),
         )
 
     def build_justification(self, decision: Decision, sources_checked: tuple[str, ...]) -> str:
@@ -68,6 +66,12 @@ class ReportService:
                 )
             case "verification_unavailable":
                 return "Não foi possível consultar as fontes externas, então a verificação não foi concluída."
+            case "open_question":
+                return (
+                    "O texto é uma pergunta aberta: pede uma informação, em vez de trazer uma afirmação "
+                    "para conferir. Envie a afirmação que você ouviu, por exemplo «Fulano ganhou a eleição "
+                    "de 2022» em vez de «Quem ganhou a eleição de 2022?»."
+                )
             case "opinion":
                 return (
                     "O texto expressa uma opinião, não um fato que possa ser confirmado ou contradito "
@@ -132,16 +136,13 @@ def _describe_source(assessment: SourceAssessment) -> str:
             f"A notícia foi atribuída a {assessment.name} ({CATEGORY_LABELS[assessment.category]}). "
             "Estar em um site conhecido, sozinho, não confirma a afirmação."
         )
-    return (
-        f"O domínio {assessment.domain} não consta no cadastro de fontes. "
-        "Isso, sozinho, não torna a notícia falsa."
-    )
+    return f"O domínio {assessment.domain} não consta no cadastro de fontes. Isso, sozinho, não torna a notícia falsa."
 
 
 def _cite(evidences) -> str:
     cited = []
     for evidence in list(evidences)[:MAX_CITED_EVIDENCES]:
-        details = [f"\"{evidence.title}\""]
+        details = [f'"{evidence.title}"']
         if evidence.published_at:
             details.append(evidence.published_at.strftime("%d/%m/%Y"))
         cited.append(f"{evidence.source_name} ({', '.join(details)})")

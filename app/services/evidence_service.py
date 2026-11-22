@@ -12,8 +12,16 @@ from app.core.exceptions import ServiceUnavailableError
 from app.integrations.search_client import SearchResult
 from app.ml.entailment_model import EntailmentScorer
 from app.services.evidence_search_service import SearchOutcome
-from app.services.source_registry_service import SourceRegistry
-from app.services.text_processing_service import WORD_PATTERN, find_terms, normalize_text, tokenize
+from app.services.source_registry_service import RegisteredSource, SourceRegistry
+from app.services.text_processing_service import (
+    WORD_PATTERN,
+    extract_quantities,
+    find_terms,
+    normalize_text,
+    quantities_conflict,
+    remove_accents,
+    tokenize,
+)
 from app.services.verification_config_service import (
     Verdict,
     VerdictPatterns,
@@ -35,6 +43,11 @@ _PREMISE_SPLIT_PATTERN = re.compile(r"(?<=[.!?;])\s+")
 _DATE_PATTERN = re.compile(r"\s*\b(?:em|no dia|dia)?\s*\d{1,2}/\d{1,2}(?:/\d{2,4})?\b", re.IGNORECASE)
 # "3x2" vira "3 a 2", como as reportagens escrevem
 _SCORE_PATTERN = re.compile(r"\b(\d{1,2})\s*[xX×]\s*(\d{1,2})\b")
+# Restos do veredito retirado da manchete: "É falso que X" vira " que X"; "X #boato" vira "X #"
+_RUMOR_LEADING = re.compile(r"^[\W_]*(?:que\b)?[\W_]*", re.IGNORECASE)
+_RUMOR_TRAILING = re.compile(r"[\s#:;,\-–—]+$")
+# Checagem escrita como negação do boato: "Caminhões não estão sendo retidos"
+_NEGATION = re.compile(r"(?<!\w)não(?!\w)\s*", re.IGNORECASE)
 # Categorias que publicam apuração própria e podem sustentar uma afirmação
 REPORTING_CATEGORIES = ("official", "scientific", "news_outlet")
 
@@ -71,6 +84,21 @@ class Candidate:
     names_covered: bool
     # Manchete ou resumo citam ao menos uma palavra do fato, além dos nomes (condição para o modelo)
     fact_covered: bool = True
+    registered: RegisteredSource | None = None
+    verdict: Verdict | None = None
+    # A manchete da checagem cita o fato: é sobre ela que a agência dá o veredito
+    fact_in_title: bool = True
+    # Idade, porcentagem e valores batem com os da afirmação (quando os dois textos os citam)
+    same_numbers: bool = True
+
+    @property
+    def is_same_fact(self) -> bool:
+        # "Silvio Santos morreu aos 86 anos #boato" é um boato antigo, não a morte aos 93
+        return self.fact_in_title and self.same_numbers
+
+    @property
+    def category(self) -> "EvidenceCategory":
+        return self.registered.category if self.registered else "unknown"
 
 
 class EvidenceService:
@@ -85,6 +113,7 @@ class EvidenceService:
         self.settings = settings
         self.verdict_patterns: VerdictPatterns = config.verdict_patterns
         self.denial_terms = config.denial_terms
+        self.roundup_terms = config.roundup_terms
         self.registry = registry
         self.stopwords = stopwords
         self.entailment_model = entailment_model
@@ -99,7 +128,8 @@ class EvidenceService:
         claim_text = normalize_text(f"{title or ''} {claim}")
         required = self.required_stems(f"{title or ''} {claim}", outcome.keywords)
         claim_stems = self.stems(claim_text)
-        candidates = self._candidates(outcome, claim_stems, required, claim_stems - required)
+        quantities = extract_quantities(claim_text)
+        candidates = self._candidates(outcome, claim_stems, required, claim_stems - required, quantities)
         entailments = self.score_entailment(candidates, claim)
         evidences = [
             evidence
@@ -121,7 +151,12 @@ class EvidenceService:
         return self.stems(" ".join(names)) or self.stems(" ".join(keywords[: self.settings.verification_min_keywords]))
 
     def _candidates(
-        self, outcome: SearchOutcome, claim_stems: set[str], required: set[str], fact_stems: set[str]
+        self,
+        outcome: SearchOutcome,
+        claim_stems: set[str],
+        required: set[str],
+        fact_stems: set[str],
+        quantities: dict[str, set[float]],
     ) -> list[Candidate]:
         """Resultados com palavras suficientes em comum com a afirmação (filtro antes do modelo).
 
@@ -132,33 +167,74 @@ class EvidenceService:
         for source_results in outcome.results:
             for result in source_results.results:
                 relevance, overlap = self.compute_relevance(result.title, claim_stems)
-                if overlap >= self.settings.evidence_min_overlap:
-                    names_covered = required <= self.stems(result.title)
-                    fact_covered = not fact_stems or bool(fact_stems & self.stems(self.premise(result)))
-                    candidates.append(
-                        Candidate(source_results.source, result, relevance, names_covered, fact_covered)
+                if overlap < self.settings.evidence_min_overlap:
+                    continue
+                registered = self.registry.find(result.url)
+                category: EvidenceCategory = registered.category if registered else "unknown"
+                candidates.append(
+                    Candidate(
+                        source_results.source,
+                        result,
+                        relevance,
+                        names_covered=required <= self.stems(result.title),
+                        fact_covered=not fact_stems or bool(fact_stems & self.stems(self.premise(result))),
+                        registered=registered,
+                        verdict=self.detect_verdict(source_results.source, result, category),
+                        fact_in_title=not fact_stems or bool(fact_stems & self.stems(result.title)),
+                        same_numbers=not quantities_conflict(
+                            quantities, extract_quantities(normalize_text(result.title))
+                        ),
                     )
+                )
         return candidates
 
     def score_entailment(self, candidates: list[Candidate], claim: str) -> list[float | None]:
-        """Implicação de cada resultado; None sem o modelo ou quando faltam os nomes ou o fato da afirmação."""
+        """Implicação de cada resultado; None sem o modelo ou quando faltam os nomes ou o fato da afirmação.
+
+        Reportagem: a manchete ou o resumo implicam a afirmação. Checagem com veredito: o boato
+        julgado é a mesma afirmação (veja score_rumors).
+        """
         scores: list[float | None] = [None] * len(candidates)
         if self.entailment_model is None:
             return scores
-        covered = [
-            index for index, candidate in enumerate(candidates)
-            if candidate.names_covered and candidate.fact_covered
-        ]
-        if not covered:
-            return scores
+        hypothesis = to_hypothesis(claim)
+        reports = [i for i, c in enumerate(candidates) if c.verdict is None and c.names_covered and c.fact_covered]
+        checks = [i for i, c in enumerate(candidates) if c.verdict is not None and c.is_same_fact and c.names_covered]
+        report_scores = self.score_reports([candidates[i] for i in reports], hypothesis)
+        rumor_scores = self.score_rumors([candidates[i] for i in checks], hypothesis)
+        for index, score in zip([*reports, *checks], [*report_scores, *rumor_scores], strict=True):
+            scores[index] = score
+        return scores
+
+    def score_reports(self, candidates: list[Candidate], hypothesis: str) -> list[float]:
+        if not candidates:
+            return []
         # A manchete e cada frase do resumo vão separadas e vale a maior nota: num bloco único o modelo
         # oscila (0,10 para a reportagem certa do jogo, 0,71 para uma checagem sobre outro assunto)
-        groups = [self.premise_sentences(candidates[index].result) for index in covered]
+        groups = [self.premise_sentences(candidate.result) for candidate in candidates]
         flat = [sentence for group in groups for sentence in group]
-        results = iter(self.run_model(flat, to_hypothesis(claim)))
-        for index, group in zip(covered, groups, strict=True):
-            scores[index] = round(max(next(results) for _ in group), 3)
-        return scores
+        results = iter(self.run_model(flat, hypothesis))
+        return [round(max(next(results) for _ in group), 3) for group in groups]
+
+    def score_rumors(self, candidates: list[Candidate], hypothesis: str) -> list[float]:
+        """A afirmação implica o boato que a checagem julgou falso (ou verdadeiro)?
+
+        Só nesse sentido o veredito passa para a afirmação: se ela implica um boato falso, ela é falsa.
+        O contrário não vale: "É falso que o papa enviou uma carta antes de morrer" implica que ele
+        morreu, mas não desmente a morte. A manchete inteira também não serve: "É falso que X" nega X
+        e o modelo dá nota baixa justamente quando a checagem é sobre a afirmação.
+        """
+        rumors = [self.rumor(c.result.title, c.verdict) for c in candidates]
+        return [round(self.run_model([hypothesis], rumor)[0], 3) for rumor in rumors]
+
+    def rumor(self, title: str, verdict: Verdict | None) -> str:
+        """Afirmação julgada pela checagem: "É falso que X" vira "X"; "X não Y" (desmentido) vira "X Y"."""
+        text = remove_spans(title, self.verdict_spans(title))
+        if text == title and verdict == "false":
+            # Sem a marca do veredito, a manchete nega o boato; tirar o "não" devolve o boato
+            text = _NEGATION.sub("", text, count=1)
+        text = _RUMOR_TRAILING.sub("", _RUMOR_LEADING.sub("", text))
+        return " ".join(text.split()) or title
 
     def run_model(self, premises: list[str], claim: str) -> list[float]:
         if not self.inference_slots.acquire(timeout=self.settings.nli_queue_timeout_seconds):
@@ -179,6 +255,14 @@ class EvidenceService:
         excerpt = result.excerpt[: self.settings.evidence_excerpt_max_length]
         return f"{result.title}. {excerpt}" if excerpt else result.title
 
+    def verdict_spans(self, title: str) -> list[tuple[int, int]]:
+        """Posições dos padrões de veredito na manchete (comparados sem acento e em minúsculas)."""
+        folded = fold_letters(title)
+        spans = []
+        for pattern in (*self.verdict_patterns.false, *self.verdict_patterns.true):
+            spans += [match.span() for match in re.finditer(rf"(?<!\w){re.escape(pattern)}", folded)]
+        return spans
+
     def is_relevant(self, relevance: float, entailment: float | None) -> bool:
         # O modelo recupera manchetes que dizem o mesmo com outras palavras ("anunciado" × "contratado")
         if entailment is not None and entailment >= self.settings.nli_min_entailment:
@@ -193,9 +277,7 @@ class EvidenceService:
             return None
         out_of_window = not self.is_within_window(result.published_at, reference)
 
-        registered = self.registry.find(result.url)
-        category: EvidenceCategory = registered.category if registered else "unknown"
-        verdict = self.detect_verdict(provider, result, category)
+        registered, category, verdict = candidate.registered, candidate.category, candidate.verdict
         return EvidenceItem(
             position=0,
             source_name=registered.name if registered else provider.name,
@@ -209,8 +291,13 @@ class EvidenceService:
             accessed_at=accessed_at,
             relevance=round(relevance, 3),
             stance=self.detect_stance(
-                verdict, category, relevance, entailment,
-                denial=self.is_denial(result.title, claim_text), out_of_window=out_of_window,
+                verdict,
+                category,
+                relevance,
+                entailment,
+                denial=self.is_denial(result.title, claim_text),
+                out_of_window=out_of_window,
+                same_fact=candidate.is_same_fact,
             ),
             verdict=verdict,
             independent=True,
@@ -246,11 +333,14 @@ class EvidenceService:
     def detect_verdict(
         self, provider: VerificationSourceConfig, result: SearchResult, category: EvidenceCategory
     ) -> Verdict | None:
-        # Manchete em forma de pergunta ("É verdade que...?") não traz veredito
-        if category != "fact_checker" or "?" in result.title:
+        # Manchete em forma de pergunta ("É verdade que...?") ou que reúne várias checagens não traz veredito
+        if category != "fact_checker" or "?" in result.title or self.is_roundup(result.title):
             return None
         content = normalize_text(f"{result.title} {result.excerpt[:VERDICT_SCAN_LENGTH]}")
         return self._match_verdict(content, self.verdict_patterns) or provider.default_verdict
+
+    def is_roundup(self, title: str) -> bool:
+        return bool(find_terms(normalize_text(title), self.roundup_terms))
 
     @staticmethod
     def _match_verdict(content: str, patterns: VerdictPatterns) -> Verdict | None:
@@ -281,9 +371,12 @@ class EvidenceService:
         entailment: float | None = None,
         denial: bool = False,
         out_of_window: bool = False,
+        same_fact: bool = True,
     ) -> Stance:
-        # Veredito sobre outro assunto não decide; assim a posição exibida é a mesma que pesa na decisão
-        if verdict is not None and verdict_matches_claim(relevance, entailment, self.settings):
+        # Veredito sobre outro assunto não decide; assim a posição exibida é a mesma que pesa na decisão.
+        # same_fact: a manchete da checagem cita o fato, não só os nomes ("No STF, Bolsonaro repete
+        # fakes sobre Pix" não desmente "STF condena Bolsonaro"), e com os mesmos números
+        if verdict is not None and same_fact and verdict_matches_claim(relevance, entailment, self.settings):
             return "contradicts" if verdict == "false" else "supports"
         # Só reportagens de fontes com apuração própria sustentam; manchete que desmente algo ou
         # publicada longe da data da notícia, nunca (o veredito acima vale sempre: boatos voltam a circular)
@@ -308,7 +401,8 @@ class EvidenceService:
             key = canonical_url(evidence.url)
             current = best.get(key)
             if current is None or (evidence.verdict is not None, evidence.relevance) > (
-                current.verdict is not None, current.relevance
+                current.verdict is not None,
+                current.relevance,
             ):
                 best[key] = evidence
         return list(best.values())
@@ -343,6 +437,22 @@ def to_hypothesis(claim: str) -> str:
     """Afirmação como o modelo compara melhor: sem datas e com placar por extenso."""
     without_dates = _DATE_PATTERN.sub("", claim)
     return " ".join(_SCORE_PATTERN.sub(r"\1 a \2", without_dates).split()) or claim
+
+
+def fold_letters(text: str) -> str:
+    """Minúsculas e sem acento, letra a letra: as posições continuam as mesmas do texto original."""
+    folded = []
+    for char in text:
+        plain = remove_accents(char.lower())
+        folded.append(plain if len(plain) == 1 else char)
+    return "".join(folded)
+
+
+def remove_spans(text: str, spans: list[tuple[int, int]]) -> str:
+    keep = [True] * len(text)
+    for start, end in spans:
+        keep[start:end] = [False] * (end - start)
+    return "".join(char if kept else " " for char, kept in zip(text, keep, strict=True))
 
 
 def canonical_url(url: str) -> str:

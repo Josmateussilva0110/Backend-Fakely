@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     analysis_rules_path: Path = BASE_DIR / "app" / "data" / "analysis_rules.json"
     source_registry_path: Path = BASE_DIR / "app" / "data" / "source_registry.json"
     # Identifica a versão das regras de decisão gravada em cada análise (auditoria)
-    analysis_version: str = "evidence-rules-2"
+    analysis_version: str = "evidence-rules-3"
     max_text_length: int = 100_000
     # Abaixo deste número de palavras não há afirmação verificável (RN07)
     min_words: int = 5

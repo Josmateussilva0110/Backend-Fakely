@@ -46,7 +46,10 @@ class WebPageClient:
             for _ in range(self.max_redirects + 1):
                 self._ensure_allowed(current)
                 with self.client.stream(
-                    "GET", current, follow_redirects=False, timeout=self.timeout_seconds,
+                    "GET",
+                    current,
+                    follow_redirects=False,
+                    timeout=self.timeout_seconds,
                     headers={"Accept": ", ".join(HTML_CONTENT_TYPES)},
                 ) as response:
                     if response.is_redirect:

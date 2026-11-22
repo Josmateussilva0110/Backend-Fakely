@@ -69,9 +69,7 @@ def is_acronym(word: str, known: frozenset[str], shouting: bool) -> bool:
 
 
 def find_terms(normalized_text: str, terms: frozenset[str]) -> tuple[str, ...]:
-    return tuple(
-        term for term in sorted(terms) if re.search(rf"\b{re.escape(term)}\b", normalized_text)
-    )
+    return tuple(term for term in sorted(terms) if re.search(rf"\b{re.escape(term)}\b", normalized_text))
 
 
 def extract_features(text: str, rules: AnalysisRules, title: str | None = None) -> TextFeatures:
@@ -107,3 +105,44 @@ def describe_style_signals(features: TextFeatures, rules: AnalysisRules) -> list
     if features.uppercase_ratio > thresholds.uppercase_ratio_min:
         signals.append("Uso excessivo de letras maiúsculas")
     return signals
+
+
+# Quantidades que identificam um fato: "morreu aos 86 anos" e "morre aos 93 anos" são fatos diferentes.
+# Só tipos com unidade clara; um número solto ("acima de 5 mil") não diz o que mede
+_NUMBER = r"\d+(?:[.,]\d+)*"
+_SCALE = r"(?:\s+(mil|milhao|milhoes|bilhao|bilhoes))?"
+_SCALES = {None: 1, "mil": 1e3, "milhao": 1e6, "milhoes": 1e6, "bilhao": 1e9, "bilhoes": 1e9}
+_QUANTITY_PATTERNS = {
+    "age": re.compile(rf"\b(?:aos|com)\s+({_NUMBER})()\s+anos\b"),
+    "percent": re.compile(rf"\b({_NUMBER})()\s*(?:%|por cento)"),
+    "money": re.compile(rf"(?:r\$|us\$|u\$)\s*({_NUMBER}){_SCALE}"),
+    "money_words": re.compile(rf"\b({_NUMBER}){_SCALE}\s+(?:de\s+)?(?:reais|dolares)\b"),
+    "cents": re.compile(rf"\b({_NUMBER})()\s+centavos\b"),
+}
+# Dinheiro escrito com símbolo ou por extenso é a mesma medida
+_QUANTITY_KIND = {"money_words": "money"}
+
+
+def parse_number(raw: str) -> float:
+    """Número no formato brasileiro ou americano: "1.518" e "5.000" são milhares; "0,37" e "0.37", decimais."""
+    if "," in raw:
+        return float(raw.replace(".", "").replace(",", "."))
+    groups = raw.split(".")
+    if len(groups) > 1 and all(len(group) == 3 for group in groups[1:]):
+        return float("".join(groups))
+    return float(raw)
+
+
+def extract_quantities(normalized_text: str) -> dict[str, set[float]]:
+    """Idades, porcentagens e valores em dinheiro do texto normalizado, já padronizados ("5 mil" = 5000)."""
+    found: dict[str, set[float]] = {}
+    for name, pattern in _QUANTITY_PATTERNS.items():
+        for match in pattern.finditer(normalized_text):
+            value = parse_number(match.group(1)) * _SCALES[match.group(2) or None]
+            found.setdefault(_QUANTITY_KIND.get(name, name), set()).add(round(value, 6))
+    return found
+
+
+def quantities_conflict(first: dict[str, set[float]], second: dict[str, set[float]]) -> bool:
+    """Os dois textos citam a mesma medida (idade, porcentagem...) com valores diferentes."""
+    return any(not (first[kind] & second[kind]) for kind in first.keys() & second.keys())
