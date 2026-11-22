@@ -66,5 +66,9 @@
   "denial_terms": [
     "nega", "negou", "negam", "desmente", "desmentiu", "descarta", "descartou",
     "não será", "não vai", "não é", "recusa", "recusou"
+  ],
+  "roundup_terms": [
+    "o que já checamos", "o que checamos", "o que já desmentimos", "o que desmentimos",
+    "checamos em tempo real", "checamos declarações", "checamos entrevistas", "checamos discursos"
   ]
 }

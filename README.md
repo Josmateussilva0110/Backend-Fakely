@@ -2,7 +2,17 @@
 
 API em FastAPI que recebe uma notícia (texto, título e/ou URL), identifica a afirmação principal, busca evidências em agências de checagem e veículos jornalísticos e devolve:
 - a classificação (`likely_true`, `likely_false` ou `inconclusive`);
-- a justificativa, as evidências com links e as limitações.
+- a justificativa, as evidências com links e as limitações;
+- a intenção do texto (`intent`): o que o usuário quer com ele.
+
+| Intenção | Exemplo | O que a API faz |
+|---|---|---|
+| `claim` | "O STF condenou Bolsonaro" | Verifica a afirmação |
+| `yes_no_question` | "É verdade que vão taxar o Pix?" | Verifica a afirmação da pergunta |
+| `open_question` | "Quem ganhou a eleição de 2022?" | Não busca: explica que verifica afirmações e sugere como reescrever |
+| `opinion` | "Acho que o Ancelotti vai fracassar" | Não busca: opinião não é fato verificável |
+| `prediction` | "O dólar vai passar de 10 reais" | Verifica mesmo assim (boatos sobre o futuro são checados); sem evidência, avisa que é algo que ainda aconteceria |
+| `multiple_claims` | "A vacina tem chip, o 5G espalha o vírus e..." | Verifica a principal e avisa que há outras |
 
 > Sem evidências suficientes, o resultado é **inconclusivo**, nunca "falso".
 
@@ -105,13 +115,42 @@ pytest                             # automatizados (sem banco e sem internet)
 ruff check .                       # lint (imports sem uso, ordem, estilo)
 ```
 
-**Interpretação do texto do usuário:** 100 casos com fatos reais e boatos que circularam (mensagens de WhatsApp, perguntas, textos em maiúsculas, opiniões), em `tests/data/claim_extraction_cases.json`. Mostra quanto a afirmação e as palavras-chave da busca acertam em cada categoria:
+**Interpretação do texto do usuário:** 250 casos com fatos reais e boatos que circularam (mensagens de WhatsApp, perguntas, textos em maiúsculas, opiniões, previsões, perguntas abertas e mensagens com várias afirmações), em `tests/data/claim_extraction_cases.json`. Mostra quanto a afirmação e as palavras-chave da busca acertam em cada categoria:
 
 ```bash
 pytest tests/services/test_claim_extraction_service.py -k dataset -s
 ```
 
 O teste falha, listando os erros caso a caso, se o resultado ficar abaixo do piso definido em `tests/services/test_claim_extraction_service.py`. Ao melhorar a interpretação, suba esse piso.
+
+**Treinamento, validação e teste:** cada caso tem o campo `split` e o campo `intent` (o que o usuário quer: verificar uma afirmação, pergunta de sim ou não, pergunta aberta, várias afirmações, previsão ou opinião). Os grupos:
+
+| Grupo | Casos | Para quê | O que aparece nos relatórios |
+|---|---|---|---|
+| `train` | ~140 | ajustar regras e parâmetros | totais e erros caso a caso |
+| `validation` | ~60 | confirmar que a melhora é real | só os totais |
+| `test` | ~50 | medir ao fechar uma versão | só os totais, e só quando pedido |
+
+Se a validação ficar bem abaixo do treinamento, as regras estão feitas sob medida. Caso novo entra como `train`; nunca mude um caso de `validation` ou `test` para `train` depois de ver o erro dele.
+
+**Avaliação completa:** passa os mesmos casos pela verificação inteira (frase, busca, evidências e decisão) e compara a classificação final com a veracidade conhecida. Mostra o acerto por categoria, os erros graves (fato marcado como falso ou boato como verdadeiro) e em que etapa cada erro aconteceu. Usa a internet, por isso fica fora do `pytest`:
+
+```bash
+python -m training.evaluate_verification                 # como o usuário usa (sem data da notícia)
+python -m training.evaluate_verification --event-date    # com a data do evento como data da notícia
+python -m training.evaluate_verification --offline       # só com as buscas já gravadas
+```
+
+As respostas das buscas ficam gravadas em `training/cache/search_results.json` e as notas do modelo de inferência textual em `training/cache/entailment_scores.json`. As duas são reaproveitadas: a medição é repetível, só buscas novas vão à internet e o modelo só é carregado quando aparece uma comparação nova. Com tudo gravado, a avaliação dos 250 casos leva poucos segundos. As notas gravadas valem só para a mesma versão do modelo; ao trocar de versão, elas são descartadas e recalculadas.
+
+**Busca de parâmetros:** testa combinações dos limiares de evidência e de decisão (nota mínima do modelo, semelhança mínima, janela de data, número de fontes) e guarda sempre a melhor:
+
+```bash
+python -m training.tune_parameters                 # sem internet
+python -m training.tune_parameters --with-search   # inclui o número de palavras-chave (faz buscas novas)
+```
+
+Uma combinação só substitui a melhor se não tiver nenhum erro grave, acertar mais no treinamento e não acertar menos na validação. A melhor fica em `training/tuning/best_params.json` e cada tentativa em `training/tuning/history.jsonl`; a busca seguinte parte da melhor guardada (use `--from-settings` para partir do `.env`). A API não muda sozinha: o script mostra as linhas para colocar no `.env`. Por padrão a avaliação roda só o treinamento; use `--split validation` ou `--split test` para conferir (só os totais aparecem) ou `--split all` para todos. Use `--refresh` para buscar tudo de novo, e `--category` e `--limit` para rodar só parte dos casos.
 
 Para testar requisição por requisição, use a documentação interativa em http://localhost:8000/docs.
 

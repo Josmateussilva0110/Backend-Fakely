@@ -5,14 +5,22 @@ from app.ml.part_of_speech_tagger import PartOfSpeechTagger
 from app.services.analysis_rules_service import load_analysis_rules
 from app.services.claim_extraction_service import ClaimExtractionService
 from app.services.evidence_search_service import EvidenceSearchService
+from app.services.intent_service import IntentService
 from app.services.text_processing_service import normalize_text
 from tests.claim_dataset import (
     CATEGORIES,
+    CHECKABLE_VERACITIES,
+    INTENTS,
+    SPLITS,
+    TEST_SPLIT,
+    TRAIN_SPLIT,
+    VALIDATION_SPLIT,
     VERACITIES,
     compute_metrics,
     evaluate_case,
     format_report,
     format_summary,
+    in_split,
     load_cases,
 )
 from tests.conftest import SENSATIONAL_TEXT
@@ -22,8 +30,13 @@ from tests.conftest import SENSATIONAL_TEXT
 # os 102 antigos seguem em 95% e 76%, a queda vem dos casos novos, mais difíceis.
 # Palavras-chave na ordem da frase e sem termos genéricos (datas, "anos"): 69,3% -> 74,6%.
 # Nome composto só com a primeira e a última palavra ("Donald Trump", não "Donald John Trump"): 75,8%.
-MIN_DATASET_CLAIM_ACCURACY = 0.92
-MIN_DATASET_KEYWORD_RECALL = 0.75
+# Com 250 casos o piso vale só para o treinamento (139). Entraram previsões e perguntas abertas, que ainda
+# viram afirmação (0% até existir a etapa de intenção): treinamento em 86% e 77%.
+# Com a etapa de intenção, previsões e perguntas abertas deixam de virar afirmação: 86% -> 90%;
+# intenção certa em 88% do treinamento.
+MIN_DATASET_CLAIM_ACCURACY = 0.89
+MIN_DATASET_KEYWORD_RECALL = 0.76
+MIN_DATASET_INTENT_ACCURACY = 0.87
 
 
 @pytest.fixture
@@ -125,7 +138,10 @@ def dataset_results():
         settings, rules.stopwords, [], acronyms=rules.acronyms, tagger=tagger, generic_terms=rules.generic_terms
     )
     try:
-        return [evaluate_case(case, claim_service, search_service, rules.stopwords) for case in load_cases()]
+        intent_service = IntentService(rules, claim_service, tagger)
+        return [
+            evaluate_case(case, claim_service, intent_service, search_service, rules.stopwords) for case in load_cases()
+        ]
     finally:
         search_service.close()
 
@@ -137,17 +153,32 @@ def test_dataset_is_well_formed():
     assert {case.category for case in cases} == set(CATEGORIES)
     for case in cases:
         assert case.veracity in VERACITIES, case.id
-        assert case.checkable == (case.veracity != "opinion"), case.id
+        assert case.split in SPLITS, case.id
+        assert case.intent in INTENTS, case.id
+        assert case.checkable == (case.veracity in CHECKABLE_VERACITIES), case.id
         assert bool(case.expected_keywords) == case.checkable, case.id
         # Palavras-chave esperadas já normalizadas, como as devolvidas pela busca
         assert all(k == normalize_text(k) for k in case.expected_keywords), case.id
 
 
+@pytest.mark.parametrize(
+    ("split", "share"), [(TRAIN_SPLIT, (0.5, 0.65)), (VALIDATION_SPLIT, (0.2, 0.3)), (TEST_SPLIT, (0.15, 0.25))]
+)
+def test_dataset_splits_cover_every_category(split, share):
+    # Cada grupo precisa ter todos os tipos de texto, senão não mede nada sobre eles
+    cases = load_cases(split)
+    assert {case.category for case in cases} == set(CATEGORIES)
+    low, high = share
+    assert low <= len(cases) / len(load_cases()) <= high
+
+
 def test_dataset_metrics_do_not_regress(dataset_results):
     """Piso com o resultado atual: ao melhorar a interpretação, suba os valores."""
-    metrics = compute_metrics(dataset_results)
+    # O piso vale para o treinamento; a validação só aparece em totais e o teste nem isso
+    metrics = compute_metrics(in_split(dataset_results, TRAIN_SPLIT))
     # Na saída só a tabela; os erros caso a caso aparecem quando o piso é violado
     print("\n" + format_summary(dataset_results))
     report = format_report(dataset_results)
     assert metrics.claim_accuracy >= MIN_DATASET_CLAIM_ACCURACY, report
     assert metrics.keyword_recall >= MIN_DATASET_KEYWORD_RECALL, report
+    assert metrics.intent_accuracy >= MIN_DATASET_INTENT_ACCURACY, report

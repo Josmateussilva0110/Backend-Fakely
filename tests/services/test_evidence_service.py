@@ -309,9 +309,103 @@ def test_busy_model_returns_service_unavailable(settings, verification_config, r
 
 def test_fact_check_with_extra_words_counts_when_model_matches(settings, verification_config, registry, rules):
     headline = "É falso que Tony Ramos morreu aos 89 anos em setembro de 2026 e morte foi anunciada na TV"
-    service = with_model(settings, verification_config, registry, rules, {headline: 0.61})
-    evidences = build_for(service, verification_config, "Tony Ramos morreu aos 89 anos", {
+    # O modelo compara o boato, sem o "É falso que", com a afirmação
+    rumor = "Tony Ramos morreu aos 89 anos em setembro de 2026 e morte foi anunciada na TV"
+    claim = "Tony Ramos morreu aos 89 anos"
+    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.61})
+    evidences = build_for(service, verification_config, claim, {
         "boatos": [make_result(headline, "https://www.boatos.org/entretenimento/tony-ramos.html")],
     })
     assert evidences[0].verdict == "false"
     assert evidences[0].stance == "contradicts"
+    # A nota veio do modelo, comparando o boato e não a manchete com o veredito
+    assert evidences[0].entailment == 0.61
+
+
+@pytest.mark.parametrize(
+    ("title", "rumor"),
+    [
+        ("É falso que as vacinas contra a Covid-19 vêm com aids", "as vacinas contra a Covid-19 vêm com aids"),
+        ("Silvio Santos morreu hoje aos 86 anos #boato", "Silvio Santos morreu hoje aos 86 anos"),
+        # Checagem escrita como negação: sem o "não" sobra o boato
+        ("Caminhões com doações ao RS não estão sendo retidos", "Caminhões com doações ao RS estão sendo retidos"),
+        # O "não" do próprio boato fica quando o veredito já foi retirado
+        ("É falso que a vacina não protege contra a gripe", "a vacina não protege contra a gripe"),
+    ],
+)
+def test_rumor_is_the_headline_without_the_verdict(evidence_service, title, rumor):
+    assert evidence_service.rumor(title, "false") == rumor
+
+
+def test_fact_check_about_other_fact_of_the_same_people_does_not_contradict(evidence_service, verification_config):
+    # Mesmos nomes, outro fato: antes os nomes bastavam e um fato verdadeiro virava "provavelmente falso"
+    evidences = build_for(evidence_service, verification_config, "STF condena Bolsonaro a 27 anos de prisão", {
+        "lupa": [make_result("Bolsonaro no STF é falso", "https://www.agencialupa.org/checagem/stf")],
+    })
+    assert evidences[0].verdict == "false"
+    assert evidences[0].stance == "neutral"
+
+
+def test_negated_fact_check_headline_is_matched_by_the_model(settings, verification_config, registry, rules):
+    headline = "Caminhões com doações ao Rio Grande do Sul não estão sendo retidos por falta de nota fiscal"
+    rumor = "Caminhões com doações ao Rio Grande do Sul estão sendo retidos por falta de nota fiscal"
+    claim = "Os caminhões com doação pro Rio Grande do Sul estão sendo parados sem nota fiscal"
+    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.9})
+    evidences = build_for(service, verification_config, claim, {
+        "lupa": [make_result(headline, "https://www.agencialupa.org/checagem/rs", excerpt="É falso que caminhões...")],
+    })
+    assert evidences[0].verdict == "false"
+    assert evidences[0].entailment == 0.9
+    assert evidences[0].stance == "contradicts"
+
+
+def test_rumor_that_only_presupposes_the_claim_does_not_contradict(settings, verification_config, registry, rules):
+    # A carta é o boato; a morte é verdadeira. O boato implica a morte, mas a morte não implica o boato
+    headline = "É falso que o papa Francisco enviou uma carta ao padre antes de morrer"
+    rumor = "o papa Francisco enviou uma carta ao padre antes de morrer"
+    claim = "O papa Francisco morreu"
+    service = with_model(settings, verification_config, registry, rules, {rumor: 0.99, (claim, rumor): 0.02})
+    evidences = build_for(service, verification_config, claim, {
+        "boatos": [make_result(headline, "https://www.boatos.org/religiao/papa-carta.html")],
+    })
+    assert all(evidence.stance != "contradicts" for evidence in evidences)
+
+
+def test_fact_check_with_other_age_is_another_fact(evidence_service, verification_config):
+    # Boato antigo da morte (86 anos) não desmente a morte real (93 anos): fato verdadeiro virava falso
+    evidences = build_for(evidence_service, verification_config, "Silvio Santos morre aos 93 anos em São Paulo", {
+        "boatos": [make_result("Silvio Santos morreu hoje aos 86 anos #boato", "https://www.boatos.org/silvio.html")],
+    })
+    assert all(evidence.stance != "contradicts" for evidence in evidences)
+
+
+def test_same_number_written_differently_still_contradicts(evidence_service, verification_config):
+    evidences = build_for(evidence_service, verification_config, "WhatsApp vai cobrar 0,37 centavos por mensagem", {
+        "boatos": [
+            make_result("WhatsApp vai cobrar 0.37 centavos por mensagem #boato", "https://www.boatos.org/zap.html")
+        ],
+    })
+    assert evidences[0].stance == "contradicts"
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "O que já checamos sobre a COP30 em Belém; confira",
+        "Metanol em bebidas alcoólicas: confira o que já checamos",
+        "Debate entre presidenciáveis na TV: checamos em tempo real",
+    ],
+)
+def test_roundup_page_has_no_verdict(evidence_service, verification_config, title):
+    # O resumo dessas páginas fala em "falso" sobre outras afirmações; a página em si não julga nada
+    lupa = verification_config.sources[0]
+    result = make_result(title, "https://www.agencialupa.org/x", excerpt="É falso que a COP30 foi cancelada")
+    assert evidence_service.detect_verdict(lupa, result, "fact_checker") is None
+
+
+def test_roundup_page_does_not_contradict_the_claim(evidence_service, verification_config):
+    evidences = build_for(evidence_service, verification_config, "A COP30 vai ser em Belém", {
+        "lupa": [make_result("O que já checamos sobre a COP30 em Belém; confira", "https://www.agencialupa.org/cop",
+                             excerpt="É falso que a COP30 foi transferida")],
+    })
+    assert all(evidence.stance != "contradicts" for evidence in evidences)

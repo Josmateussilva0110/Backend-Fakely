@@ -28,14 +28,27 @@ class AnalysisRules(BaseModel):
     opinion_terms: frozenset[str]
     # Títulos chamativos que não dizem o fato ("você não vai acreditar")
     vague_title_terms: frozenset[str]
+    # Começo de pergunta aberta ("quem ganhou...?"): pede uma informação, não traz afirmação
+    open_question_terms: frozenset[str]
+    # Auxiliares de futuro ("vai", "irão"): a afirmação fala de algo que ainda aconteceria
+    future_terms: frozenset[str]
     # Datas e medidas de tempo ("domingo", "anos", "a partir de"): têm sentido, mas não ajudam a busca
     generic_terms: frozenset[str]
     style_thresholds: StyleThresholds
 
     # Termos são comparados com o texto normalizado (minúsculo e sem acento)
     @field_validator(
-        "stopwords", "sensational_terms", "alarmist_terms", "acronyms", "claim_prefixes", "opinion_terms",
-        "vague_title_terms", "generic_terms", mode="before",
+        "stopwords",
+        "sensational_terms",
+        "alarmist_terms",
+        "acronyms",
+        "claim_prefixes",
+        "opinion_terms",
+        "vague_title_terms",
+        "generic_terms",
+        "open_question_terms",
+        "future_terms",
+        mode="before",
     )
     @classmethod
     def normalize_terms(cls, values: list[str]) -> frozenset[str]:

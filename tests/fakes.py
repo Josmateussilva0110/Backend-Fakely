@@ -21,6 +21,9 @@ class FakeSearchClient:
 class FakeSearchService:
     """Substitui o EvidenceSearchService devolvendo um resultado pronto."""
 
+    # Sem classe gramatical, como o serviço real com o modelo desligado
+    tagger = None
+
     def __init__(self, outcome: SearchOutcome | None):
         self.outcome = outcome
         self.calls = 0
@@ -31,15 +34,18 @@ class FakeSearchService:
 
 
 class FakeEntailmentModel:
-    """Devolve a implicação definida para cada manchete (0 quando não definida)."""
+    """Devolve a implicação definida para cada manchete (0 quando não definida).
 
-    def __init__(self, scores: dict[str, float]):
+    A chave pode ser a premissa ou o par (premissa, hipótese), quando a hipótese também importa.
+    """
+
+    def __init__(self, scores: dict):
         self.scores = scores
         self.hypotheses: list[str] = []
 
     def entailment(self, premises: list[str], hypothesis: str) -> list[float]:
         self.hypotheses.append(hypothesis)
-        return [self.scores.get(premise, 0.0) for premise in premises]
+        return [self.scores.get((premise, hypothesis), self.scores.get(premise, 0.0)) for premise in premises]
 
 
 def make_result(

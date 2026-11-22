@@ -16,6 +16,7 @@ DecisionReason = Literal[
     "verification_unavailable",
     "insufficient_text",
     "opinion",
+    "open_question",
 ]
 
 

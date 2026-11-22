@@ -1,0 +1,45 @@
+{
+  "updated_at": "2026-11-22T14:36:24+00:00",
+  "params": {
+    "nli_min_entailment": 0.5,
+    "decision_min_relevance": 0.7,
+    "evidence_min_relevance": 0.5,
+    "evidence_min_overlap": 2,
+    "evidence_identical_relevance": 0.95,
+    "evidence_support_window_days": 730,
+    "decision_min_supporting_sources": 1,
+    "decision_min_contradicting_sources": 1
+  },
+  "train": {
+    "cases": 278,
+    "correct": 79,
+    "serious": 2
+  },
+  "validation": {
+    "cases": 124,
+    "correct": 38,
+    "serious": 0
+  },
+  "baseline": {
+    "params": {
+      "nli_min_entailment": 0.6,
+      "decision_min_relevance": 0.7,
+      "evidence_min_relevance": 0.5,
+      "evidence_min_overlap": 2,
+      "evidence_identical_relevance": 0.95,
+      "evidence_support_window_days": 60,
+      "decision_min_supporting_sources": 1,
+      "decision_min_contradicting_sources": 1
+    },
+    "train": {
+      "cases": 278,
+      "correct": 63,
+      "serious": 2
+    },
+    "validation": {
+      "cases": 124,
+      "correct": 34,
+      "serious": 0
+    }
+  }
+}

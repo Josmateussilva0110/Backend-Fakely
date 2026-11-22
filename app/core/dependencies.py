@@ -28,6 +28,4 @@ def get_news_analysis_service(
     verification_service: VerificationService = Depends(get_verification_service),
     content_service: ContentExtractionService = Depends(get_content_extraction_service),
 ) -> NewsAnalysisService:
-    return NewsAnalysisService(
-        NewsAnalysisRepository(db), NewsRepository(db), verification_service, content_service
-    )
+    return NewsAnalysisService(NewsAnalysisRepository(db), NewsRepository(db), verification_service, content_service)

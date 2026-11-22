@@ -267,6 +267,11 @@
     "entenda o que",
     "notícia triste"
   ],
+  "open_question_terms": [
+    "quem", "qual", "quais", "quanto", "quanta", "quantos", "quantas", "onde", "quando", "como",
+    "por que", "por quê", "porque", "o que", "em qual", "em que", "de quem", "para que", "pra que"
+  ],
+  "future_terms": ["vai", "vão", "irá", "irão", "vamos"],
   "generic_terms": [
     "domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado",
     "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",

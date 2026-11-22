@@ -8,8 +8,18 @@ from bs4 import BeautifulSoup
 from app.integrations.search_client import HttpFetcher, SearchResult, is_allowed_url
 
 _MONTHS = {
-    "jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
-    "jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12,
+    "jan": 1,
+    "fev": 2,
+    "mar": 3,
+    "abr": 4,
+    "mai": 5,
+    "jun": 6,
+    "jul": 7,
+    "ago": 8,
+    "set": 9,
+    "out": 10,
+    "nov": 11,
+    "dez": 12,
 }
 # Formato usado pela Folha: "11.set.2026 às 11h28"
 _DATE_PATTERN = re.compile(r"(\d{1,2})\.([a-z]{3})\.(\d{4})")
@@ -39,12 +49,14 @@ def parse_folha_results(html: str, allowed_domains: tuple[str, ...], limit: int)
             continue
         excerpt = item.select_one(".c-headline__standfirst")
         published = item.select_one("time.c-headline__dateline")
-        results.append(SearchResult(
-            title=" ".join(title.get_text(" ").split()),
-            url=url,
-            excerpt=" ".join(excerpt.get_text(" ").split()) if excerpt else "",
-            published_at=_parse_date(published.get("datetime", "") if published else ""),
-        ))
+        results.append(
+            SearchResult(
+                title=" ".join(title.get_text(" ").split()),
+                url=url,
+                excerpt=" ".join(excerpt.get_text(" ").split()) if excerpt else "",
+                published_at=_parse_date(published.get("datetime", "") if published else ""),
+            )
+        )
         if len(results) >= limit:
             break
     return results
