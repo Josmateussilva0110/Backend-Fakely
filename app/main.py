@@ -89,6 +89,8 @@ def build_verification_service(
     if not settings.verification_enabled:
         return VerificationService(settings, rules, registry)
     config = load_verification_config(settings.verification_sources_path)
+    # Um só modelo de classe gramatical para a busca e para as evidências
+    tagger = load_part_of_speech_tagger(settings)
     return VerificationService(
         settings,
         rules,
@@ -99,11 +101,16 @@ def build_verification_service(
             rules.stopwords,
             http_client,
             acronyms=rules.acronyms,
-            tagger=load_part_of_speech_tagger(settings),
+            tagger=tagger,
             generic_terms=rules.generic_terms,
         ),
         evidence_service=EvidenceService(
-            settings, config, registry, rules.stopwords, entailment_model=load_entailment_model(settings)
+            settings,
+            config,
+            registry,
+            rules.stopwords,
+            entailment_model=load_entailment_model(settings),
+            tagger=tagger,
         ),
     )
 

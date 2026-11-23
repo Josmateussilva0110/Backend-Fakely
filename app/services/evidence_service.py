@@ -11,12 +11,14 @@ from app.core.config import Settings
 from app.core.exceptions import ServiceUnavailableError
 from app.integrations.search_client import SearchResult
 from app.ml.entailment_model import EntailmentScorer
+from app.ml.part_of_speech_tagger import WordTagger
 from app.services.evidence_search_service import SearchOutcome
 from app.services.source_registry_service import RegisteredSource, SourceRegistry
 from app.services.text_processing_service import (
     WORD_PATTERN,
     extract_quantities,
     find_terms,
+    is_shouting,
     normalize_text,
     quantities_conflict,
     remove_accents,
@@ -50,6 +52,7 @@ _RUMOR_TRAILING = re.compile(r"[\s#:;,\-–—]+$")
 _NEGATION = re.compile(r"(?<!\w)não(?!\w)\s*", re.IGNORECASE)
 # Categorias que publicam apuração própria e podem sustentar uma afirmação
 REPORTING_CATEGORIES = ("official", "scientific", "news_outlet")
+PROPER_NOUN_CLASS = "PROPN"
 
 
 @dataclass(frozen=True)
@@ -109,6 +112,7 @@ class EvidenceService:
         registry: SourceRegistry,
         stopwords: frozenset[str],
         entailment_model: EntailmentScorer | None = None,
+        tagger: WordTagger | None = None,
     ):
         self.settings = settings
         self.verdict_patterns: VerdictPatterns = config.verdict_patterns
@@ -117,6 +121,7 @@ class EvidenceService:
         self.registry = registry
         self.stopwords = stopwords
         self.entailment_model = entailment_model
+        self.tagger = tagger
         # Compartilhado entre as requisições (o serviço é criado uma vez, no lifespan)
         self.inference_slots = threading.BoundedSemaphore(settings.nli_max_concurrent)
 
@@ -126,7 +131,7 @@ class EvidenceService:
         """reference_date: data da notícia; sem ela, vale o dia da análise."""
         reference = reference_date or outcome.accessed_at.date()
         claim_text = normalize_text(f"{title or ''} {claim}")
-        required = self.required_stems(f"{title or ''} {claim}", outcome.keywords)
+        required = self.required_stems([title or "", claim], outcome.keywords)
         claim_stems = self.stems(claim_text)
         quantities = extract_quantities(claim_text)
         candidates = self._candidates(outcome, claim_stems, required, claim_stems - required, quantities)
@@ -141,14 +146,29 @@ class EvidenceService:
         unique.sort(key=lambda e: (e.relevance, e.verdict is not None), reverse=True)
         return self.mark_independence(unique)
 
-    def required_stems(self, text: str, keywords: tuple[str, ...]) -> set[str]:
+    def required_stems(self, texts: list[str], keywords: tuple[str, ...]) -> set[str]:
         """Nomes próprios da afirmação; sem nenhum (texto todo em minúsculas), as palavras-chave mais específicas.
 
         O modelo dá nota alta a manchetes com as mesmas entidades e outro protagonista
         ("Courtois renova com o Real Madrid" para "Neymar foi contratado pelo Real Madrid").
         """
-        names = [word for word in WORD_PATTERN.findall(text) if word[0].isupper()]
+        names = [name for text in texts for name in self.proper_nouns(text)]
         return self.stems(" ".join(names)) or self.stems(" ".join(keywords[: self.settings.verification_min_keywords]))
+
+    def proper_nouns(self, text: str) -> list[str]:
+        """Nomes pela classe gramatical; sem o modelo, palavras com inicial maiúscula.
+
+        Só a maiúscula confunde o começo da frase com nome ("Depois que tomei a vacina..." exigia
+        "Depois" na manchete); só o modelo marca como nome placares e palavras em minúsculas ("3x2",
+        "x"). Texto todo em maiúsculas não indica nome nenhum.
+        """
+        if is_shouting(text):
+            return []
+        if self.tagger is None:
+            return [word for word in WORD_PATTERN.findall(text) if word[0].isupper()]
+        return [
+            word for word, word_class in self.tagger.tag(text) if word_class == PROPER_NOUN_CLASS and word[0].isupper()
+        ]
 
     def _candidates(
         self,

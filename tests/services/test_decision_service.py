@@ -100,3 +100,10 @@ def test_confidence_is_medium_with_one_source_or_partial_search(decision_service
 def test_inconclusive_has_low_confidence(decision_service):
     decision = decision_service.decide([], CHECKED)
     assert decision_service.confidence(decision, VerificationStatus.COMPLETE) == Confidence.LOW
+
+
+def test_identical_headline_decides_despite_low_entailment(decision_service, settings):
+    # "Rebeca Andrade supera Simone Biles e é ouro no solo": o modelo deu 0,30 para a manchete idêntica
+    evidence = make_evidence("supports", organization="folha", category="news_outlet",
+                             relevance=settings.evidence_identical_relevance, entailment=0.3)
+    assert decision_service.decide([evidence], CHECKED).classification == Classification.LIKELY_TRUE
