@@ -20,7 +20,9 @@ from tests.claim_dataset import (
     evaluate_case,
     format_report,
     format_summary,
+    has_keyword,
     in_split,
+    keyword_alternatives,
     load_cases,
 )
 from tests.conftest import SENSATIONAL_TEXT
@@ -159,6 +161,7 @@ def test_dataset_is_well_formed():
         assert bool(case.expected_keywords) == case.checkable, case.id
         # Palavras-chave esperadas já normalizadas, como as devolvidas pela busca
         assert all(k == normalize_text(k) for k in case.expected_keywords), case.id
+        assert all(all(keyword_alternatives(k)) for k in case.expected_keywords), case.id
 
 
 @pytest.mark.parametrize(
@@ -182,3 +185,9 @@ def test_dataset_metrics_do_not_regress(dataset_results):
     assert metrics.claim_accuracy >= MIN_DATASET_CLAIM_ACCURACY, report
     assert metrics.keyword_recall >= MIN_DATASET_KEYWORD_RECALL, report
     assert metrics.intent_accuracy >= MIN_DATASET_INTENT_ACCURACY, report
+
+
+def test_expected_keyword_accepts_any_alternative():
+    assert has_keyword("cirurgia|operado", ("lula", "operado"))
+    assert not has_keyword("cirurgia|operado", ("lula", "hemorragia"))
+    assert has_keyword("lula", ("lula",))

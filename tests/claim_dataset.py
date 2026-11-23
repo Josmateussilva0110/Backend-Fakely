@@ -34,6 +34,8 @@ VALIDATION_SPLIT = "validation"
 TEST_SPLIT = "test"
 SPLITS = (TRAIN_SPLIT, VALIDATION_SPLIT, TEST_SPLIT)
 MIN_CLAIM_F1 = 0.6
+# "cirurgia|operado": qualquer uma das formas conta (sinônimos e flexões que o radical não junta)
+KEYWORD_ALTERNATIVE_SEPARATOR = "|"
 
 
 @dataclass(frozen=True)
@@ -66,6 +68,14 @@ class CaseResult:
     @property
     def intent_hit(self) -> bool:
         return self.intent == self.case.intent
+
+
+def keyword_alternatives(expected: str) -> list[str]:
+    return expected.split(KEYWORD_ALTERNATIVE_SEPARATOR)
+
+
+def has_keyword(expected: str, keywords: tuple[str, ...]) -> bool:
+    return any(alternative in keywords for alternative in keyword_alternatives(expected))
 
 
 def load_cases(split: str | None = None) -> list[ClaimCase]:
@@ -111,7 +121,7 @@ def evaluate_case(
         return CaseResult(case, claim, (), claim_hit, None, intent)
 
     keywords = tuple(search_service.extract_keywords(claim, case.title)) if claim else ()
-    found = sum(1 for keyword in case.expected_keywords if keyword in keywords)
+    found = sum(1 for keyword in case.expected_keywords if has_keyword(keyword, keywords))
     return CaseResult(case, claim, keywords, claim_hit, found / len(case.expected_keywords), intent)
 
 
@@ -183,6 +193,6 @@ def format_report(results: list[CaseResult]) -> str:
     lines.append("Palavras-chave faltando:")
     for result in train:
         if result.keyword_recall is not None and result.keyword_recall < 1:
-            missing = [k for k in result.case.expected_keywords if k not in result.keywords]
+            missing = [k for k in result.case.expected_keywords if not has_keyword(k, result.keywords)]
             lines.append(f"- {result.case.id}: faltou={missing} obtido={list(result.keywords)}")
     return "\n".join(lines)

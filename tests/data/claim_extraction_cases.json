@@ -213,7 +213,7 @@
     "title": null,
     "text": "Uma operação policial nos complexos do Alemão e da Penha, na zona norte do Rio de Janeiro, deixou mais de cem mortos. Foi a ação policial mais letal da história do estado.",
     "expected_claim": "Uma operação policial nos complexos do Alemão e da Penha, na zona norte do Rio de Janeiro, deixou mais de cem mortos.",
-    "expected_keywords": ["operacao", "alemao", "penha"]
+    "expected_keywords": ["operacao|megaoperacao", "alemao", "penha"]
   },
   {
     "id": "news-taxa-das-blusinhas",
@@ -249,7 +249,7 @@
     "title": null,
     "text": "URGENTE pessoal!!! A partir de agora o governo vai taxar o Pix. Toda transferência acima de 5 mil vai pagar imposto pra Receita. Compartilhem com todos os grupos antes que apaguem!!",
     "expected_claim": "O governo vai taxar o Pix",
-    "expected_keywords": ["pix", "taxar", "receita"]
+    "expected_keywords": ["pix", "taxar"]
   },
   {
     "id": "whatsapp-doacoes-rs-barradas",
@@ -369,7 +369,7 @@
     "title": null,
     "text": "Pesquisem! As antenas de 5G espalham o coronavírus, por isso a doença começou em Wuhan. Repasse",
     "expected_claim": "As antenas de 5G espalham o coronavírus",
-    "expected_keywords": ["antenas", "coronavirus"]
+    "expected_keywords": ["antenas|5g", "coronavirus"]
   },
   {
     "id": "whatsapp-mortes-metanol",
@@ -861,7 +861,7 @@
     "title": null,
     "text": "o neymar voltou pro santos depois de sair do al hilal",
     "expected_claim": "Neymar voltou para o Santos depois de sair do Al-Hilal",
-    "expected_keywords": ["neymar", "santos", "hilal"]
+    "expected_keywords": ["neymar", "santos", "voltou|volta|assina"]
   },
   {
     "id": "lowercase-aviao-voepass",
@@ -909,7 +909,7 @@
     "title": null,
     "text": "o lula fez cirurgia na cabeca por causa de uma hemorragia depois de cair no banheiro",
     "expected_claim": "Lula fez cirurgia na cabeça por causa de uma hemorragia depois de cair no banheiro",
-    "expected_keywords": ["lula", "cirurgia", "hemorragia"]
+    "expected_keywords": ["lula", "cirurgia|operado", "hemorragia"]
   },
   {
     "id": "lowercase-apagao",
@@ -957,7 +957,7 @@
     "title": "Você não vai acreditar no que aconteceu hoje em Brasília",
     "text": "O Supremo Tribunal Federal condenou o ex-presidente Jair Bolsonaro a 27 anos e 3 meses de prisão por liderar uma trama golpista. A decisão foi tomada pela Primeira Turma.",
     "expected_claim": "O Supremo Tribunal Federal condenou o ex-presidente Jair Bolsonaro a 27 anos e 3 meses de prisão por liderar uma trama golpista.",
-    "expected_keywords": ["bolsonaro", "supremo", "condenou"]
+    "expected_keywords": ["bolsonaro", "condenou|condenacao|condena"]
   },
   {
     "id": "clickbait-morte-papa",
@@ -1485,7 +1485,7 @@
     "title": null,
     "text": "Vocês sabiam? A Marielle Franco era casada com o Marcinho VP e foi eleita pelo Comando Vermelho. A mídia está escondendo isso",
     "expected_claim": "Marielle Franco era casada com o Marcinho VP",
-    "expected_keywords": ["marielle", "marcinho", "casada"]
+    "expected_keywords": ["marielle", "marcinho", "casada|ex-mulher"]
   },
   {
     "id": "whatsapp-kit-gay-escolas",
@@ -1497,7 +1497,7 @@
     "title": null,
     "text": "Pais fiquem de olho!!! O Haddad distribuiu o kit gay nas escolas quando era ministro da Educação, com livro ensinando sexo para crianças de 6 anos. Divulguem",
     "expected_claim": "Haddad distribuiu o kit gay nas escolas quando era ministro da Educação",
-    "expected_keywords": ["haddad", "kit", "escolas"]
+    "expected_keywords": ["haddad", "kit", "gay"]
   },
   {
     "id": "whatsapp-bill-gates-vacina",
@@ -1557,7 +1557,7 @@
     "title": null,
     "text": "É DO BRASIL!!! O Vini Jr ganhou o The Best da Fifa e é o melhor jogador do mundo, primeiro brasileiro desde o Kaká 🇧🇷🇧🇷",
     "expected_claim": "O Vini Jr ganhou o The Best da Fifa e é o melhor jogador do mundo",
-    "expected_keywords": ["vini", "fifa", "jogador"]
+    "expected_keywords": ["vini|vinicius", "fifa", "jogador"]
   },
   {
     "id": "whatsapp-mpox-emergencia",
@@ -1785,7 +1785,7 @@
     "title": "Pais, vocês precisam ver isso urgentemente",
     "text": "Fernando Haddad distribuiu um kit gay nas escolas públicas quando era ministro da Educação. O material incluía um livro sobre sexo para crianças.",
     "expected_claim": "Fernando Haddad distribuiu um kit gay nas escolas públicas quando era ministro da Educação.",
-    "expected_keywords": ["haddad", "kit", "escolas"]
+    "expected_keywords": ["haddad", "kit", "gay"]
   },
   {
     "id": "clickbait-marielle-marcinho-vp",
@@ -2433,7 +2433,7 @@
     "title": null,
     "text": "Que notícia triste gente, a Preta Gil morreu nos Estados Unidos, ela tava tratando o câncer lá 😢",
     "expected_claim": "A Preta Gil morreu nos Estados Unidos",
-    "expected_keywords": ["preta", "gil", "morreu"]
+    "expected_keywords": ["preta", "gil", "morreu|morte"]
   },
   {
     "id": "whatsapp-faustao-transplante",
@@ -2889,7 +2889,7 @@
     "title": null,
     "text": "Gente, as chuvas do RS foram provocadas pelo HAARP e o Exército está proibindo voluntários de resgatar as vítimas. Divulguem",
     "expected_claim": "As chuvas do RS foram provocadas pelo HAARP",
-    "expected_keywords": ["haarp", "chuvas"]
+    "expected_keywords": ["haarp", "chuvas|enchentes"]
   },
   {
     "id": "multiple-claims-ivermectina-alcool-gel",

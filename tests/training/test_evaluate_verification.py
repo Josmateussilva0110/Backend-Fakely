@@ -6,6 +6,7 @@ from app.integrations.search_client import SearchError
 from app.models.news_analysis_model import Classification, Confidence, Intent, VerificationStatus
 from app.services.decision_service import DecisionService
 from app.services.evidence_service import EvidenceItem
+from app.services.text_processing_service import normalize_text, tokenize
 from app.services.verification_service import VerificationReport
 from tests.claim_dataset import ClaimCase
 from tests.fakes import FakeSearchClient, make_result
@@ -17,6 +18,7 @@ from training.evaluate_verification import (
     STAGE_OK,
     STAGE_OPINION_CHECKED,
     STAGE_OUT_OF_WINDOW,
+    STAGE_RIGHT_RESULT_MISSING,
     STAGE_UNRELATED,
     STAGE_VERDICT_MISSING,
     STAGE_VERDICT_UNMATCHED,
@@ -26,6 +28,9 @@ from training.evaluate_verification import (
     SearchStore,
     diagnose,
     format_errors,
+    format_search,
+    is_right_result,
+    measure_search,
     parse_event_date,
 )
 
@@ -192,3 +197,66 @@ def test_validation_errors_are_counted_but_never_listed():
     assert CASE.id in report
     assert "validation-pix" not in report
     assert "1 de validação ou teste não listados" in report
+
+
+def stems(text: str) -> set[str]:
+    # Como EvidenceService.stems: palavras com menos de 3 letras não geram radical
+    return {token[:5] for token in tokenize(normalize_text(text)) if len(token) >= 3}
+
+
+RIGHT = make_result("Governo vai taxar o Pix? É falso", "https://lupa.org/1")
+UNRELATED = make_result("Pix bate recorde de transações", "https://cnn.org/2", excerpt="ninguém vai taxar")
+
+
+def test_search_finds_the_right_result_only_in_the_headline():
+    # O resumo cita "taxar" de passagem: não basta
+    report = make_report(evidences=(make_evidence("neutral", organization="cnn"),))
+    assert measure_search(CASE, report, True, [UNRELATED], stems) == (False, False)
+    assert measure_search(CASE, report, True, [UNRELATED, RIGHT], stems) == (True, False)
+
+
+def test_right_result_counts_as_evidence_by_url():
+    report = make_report(evidences=(make_evidence("neutral", organization="lupa"),))
+    assert measure_search(CASE, report, True, [make_result(RIGHT.title, "https://www.lupa.org/1/")], stems) == (
+        True,
+        True,
+    )
+
+
+def test_search_is_not_measured_without_the_right_claim():
+    assert measure_search(CASE, make_report(), False, [RIGHT], stems) == (None, None)
+    assert measure_search(CASE, make_report(checked=()), True, [RIGHT], stems) == (None, None)
+
+
+def test_missing_right_result_is_a_search_error(decisions):
+    report = make_report(evidences=(make_evidence("neutral", category="news_outlet"),))
+    stage = diagnose(CASE, report, Classification.LIKELY_FALSE, True, 3, decisions, search_hit=False)
+    assert stage == STAGE_RIGHT_RESULT_MISSING
+    assert diagnose(CASE, report, Classification.LIKELY_FALSE, True, 3, decisions, search_hit=True) == STAGE_WEAK
+
+
+def test_search_funnel_counts_lucky_hits():
+    wrong, right = make_report(), make_report(Classification.LIKELY_FALSE)
+    outcomes = [
+        CaseOutcome(CASE, right, Classification.LIKELY_FALSE, True, 3, STAGE_OK, True, True),
+        CaseOutcome(CASE, wrong, Classification.LIKELY_FALSE, True, 3, STAGE_WEAK, True, False),
+        CaseOutcome(CASE, right, Classification.LIKELY_FALSE, True, 3, STAGE_OK, False, False),
+        CaseOutcome(CASE, wrong, Classification.LIKELY_FALSE, False, 3, STAGE_CLAIM_WRONG),
+    ]
+    total = format_search(outcomes)[-1].split()
+    # 3 casos medidos: busca 2/3, evidência 1/3, acerto 2/3, 1 por sorte
+    assert total == ["total", "3", "67%", "33%", "67%", "1"]
+
+
+def test_right_result_accepts_keyword_alternatives():
+    title = make_result("Lula foi operado por hemorragia intracraniana", "https://cnn.org/3")
+    assert is_right_result(title, ("lula", "cirurgia|operado", "hemorragia"), stems)
+    assert not is_right_result(title, ("lula", "cirurgia", "hemorragia"), stems)
+
+
+def test_short_alternative_matches_the_whole_word():
+    # "5g" não tem radical (menos de 3 letras): sem a palavra inteira, casaria com qualquer manchete
+    title = make_result("Tecnologia 5G está ligada ao surgimento do novo coronavírus", "https://boatos.org/4")
+    assert is_right_result(title, ("antenas|5g", "coronavirus"), stems)
+    other = make_result("Novo coronavírus chega ao Brasil", "https://boatos.org/5")
+    assert not is_right_result(other, ("antenas|5g", "coronavirus"), stems)

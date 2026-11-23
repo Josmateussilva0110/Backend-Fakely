@@ -3,6 +3,12 @@
 Compara a classificação final com a veracidade conhecida de cada caso e aponta, para cada erro,
 a etapa em que a verificação se perdeu (frase, palavras-chave, busca, evidências ou decisão).
 
+A seção "Busca" mede se o resultado certo veio entre os encontrados: um resultado cuja manchete
+cita todas as palavras-chave esperadas do caso (expected_keywords, pelo radical ou por uma das
+alternativas, como "cirurgia|operado"). Assim
+separa erro de busca (palavras-chave ruins ou buscador que não achou) de erro de evidência (o
+resultado certo veio, mas não virou evidência ou não decidiu).
+
 Usa a internet: as buscas vão aos sites de checagem e jornais, como na API. As respostas ficam
 gravadas em training/cache/search_results.json e são reaproveitadas nas execuções seguintes,
 então a medição é repetível e só buscas novas vão à internet.
@@ -25,6 +31,7 @@ import json
 import re
 import sys
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -39,8 +46,9 @@ from app.main import build_verification_service, load_entailment_model
 from app.models.news_analysis_model import Classification, VerificationStatus
 from app.services.decision_service import DecisionService
 from app.services.evidence_search_service import SearchProvider
-from app.services.evidence_service import EvidenceItem
+from app.services.evidence_service import EvidenceItem, canonical_url
 from app.services.source_registry_service import load_source_registry
+from app.services.text_processing_service import normalize_text, tokenize
 from app.services.verification_service import VerificationReport, VerificationService
 from tests.claim_dataset import (
     CATEGORIES,
@@ -49,6 +57,7 @@ from tests.claim_dataset import (
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
     ClaimCase,
+    keyword_alternatives,
     load_cases,
 )
 from tests.claim_dataset import is_claim_hit as dataset_claim_hit
@@ -100,6 +109,7 @@ STAGE_CLAIM_WRONG = "1. frase errada"
 STAGE_NO_KEYWORDS = "2. sem palavras-chave"
 STAGE_SOURCES_DOWN = "3. fontes fora do ar"
 STAGE_NO_RESULTS = "3. busca sem resultados"
+STAGE_RIGHT_RESULT_MISSING = "3. busca sem o resultado certo"
 STAGE_UNRELATED = "4. resultados sem relação"
 STAGE_OUT_OF_WINDOW = "4. reportagem fora da janela de data"
 STAGE_VERDICT_UNMATCHED = "4. checagem com veredito, mas não ligada à frase"
@@ -120,7 +130,8 @@ class SearchStore:
         self.data: dict[str, list[dict]] = {}
         if path.exists() and mode != "refresh":
             self.data = json.loads(path.read_text(encoding="utf-8"))
-        self.results_seen = 0
+        # Resultados devolvidos no caso em andamento (as buscas de um caso rodam em paralelo)
+        self.case_results: list[SearchResult] = []
         self.fetched = 0
 
     @staticmethod
@@ -137,13 +148,17 @@ class SearchStore:
             self.data[key] = [result_to_dict(result) for result in results]
             self.fetched += 1
 
+    @property
+    def results_seen(self) -> int:
+        return len(self.case_results)
+
     def count(self, results: list[SearchResult]) -> None:
         with self.lock:
-            self.results_seen += len(results)
+            self.case_results.extend(results)
 
     def start_case(self) -> None:
         with self.lock:
-            self.results_seen = 0
+            self.case_results = []
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -201,6 +216,9 @@ class CaseOutcome:
     claim_hit: bool
     raw_results: int
     stage: str
+    # None quando a busca não se aplica: caso sem afirmação, frase errada ou busca não feita
+    search_hit: bool | None = None
+    hit_as_evidence: bool | None = None
 
     @property
     def correct(self) -> bool:
@@ -222,6 +240,7 @@ def diagnose(
     claim_hit: bool,
     raw_results: int,
     decisions: DecisionService,
+    search_hit: bool | None = None,
 ) -> str:
     """Primeira etapa do pipeline em que o caso se perdeu."""
     if report.classification == expected:
@@ -236,14 +255,21 @@ def diagnose(
         return STAGE_NO_KEYWORDS
     if not report.sources_checked:
         return STAGE_SOURCES_DOWN
-    return diagnose_evidences(report, expected, raw_results, decisions)
+    return diagnose_evidences(report, expected, raw_results, decisions, search_hit)
 
 
 def diagnose_evidences(
-    report: VerificationReport, expected: Classification, raw_results: int, decisions: DecisionService
+    report: VerificationReport,
+    expected: Classification,
+    raw_results: int,
+    decisions: DecisionService,
+    search_hit: bool | None = None,
 ) -> str:
     if raw_results == 0:
         return STAGE_NO_RESULTS
+    # Sem o resultado certo, o problema está antes das evidências: palavras-chave ou buscador
+    if search_hit is False:
+        return STAGE_RIGHT_RESULT_MISSING
     if not report.evidences:
         return STAGE_UNRELATED
     decision = decisions.decide(list(report.evidences), report.sources_checked)
@@ -271,6 +297,39 @@ def diagnose_weak_evidences(
     return next((stage for found, stage in ordered if found), STAGE_WEAK)
 
 
+def is_right_result(result: SearchResult, expected: tuple[str, ...], stems: Callable[[str], set[str]]) -> bool:
+    """A manchete cita todas as palavras-chave esperadas do caso (cada uma em alguma das formas aceitas).
+
+    Só a manchete: o resumo cita nomes de passagem ("Neymar vira escudo da seleção na Copa" não é
+    sobre o ligamento do joelho). Sinônimos só contam quando listados como alternativa
+    ("morreu|morte"), então a medida depende das expected_keywords escolhidas no conjunto.
+    """
+    title_tokens = set(tokenize(normalize_text(result.title)))
+    title_stems = stems(result.title)
+
+    def cited(alternative: str) -> bool:
+        # Palavra curta ("5g") não gera radical: vale a palavra inteira
+        alternative_stems = stems(alternative)
+        return alternative in title_tokens or bool(alternative_stems) and alternative_stems <= title_stems
+
+    return bool(expected) and all(any(cited(a) for a in keyword_alternatives(k)) for k in expected)
+
+
+def measure_search(
+    case: ClaimCase,
+    report: VerificationReport,
+    claim_hit: bool,
+    results: list[SearchResult],
+    stems: Callable[[str], set[str]],
+) -> tuple[bool | None, bool | None]:
+    """(o resultado certo veio na busca, algum deles virou evidência); None quando não se aplica."""
+    if not case.checkable or not claim_hit or not report.sources_checked:
+        return None, None
+    right = {canonical_url(r.url) for r in results if is_right_result(r, case.expected_keywords, stems)}
+    as_evidence = any(canonical_url(e.url) in right for e in report.evidences)
+    return bool(right), as_evidence
+
+
 def evaluate(
     service: VerificationService,
     store: SearchStore,
@@ -278,6 +337,8 @@ def evaluate(
     use_event_date: bool,
     quiet: bool = False,
 ) -> list[CaseOutcome]:
+    assert service.evidence_service is not None
+    stems = service.evidence_service.stems
     outcomes = []
     for number, case in enumerate(cases, start=1):
         store.start_case()
@@ -285,8 +346,11 @@ def evaluate(
         report = service.verify(case.text, case.title, published_at=published_at, refresh=True)
         expected = EXPECTED[case.veracity]
         claim_hit = is_claim_hit(case, report, service.rules.stopwords)
-        stage = diagnose(case, report, expected, claim_hit, store.results_seen, service.decision_service)
-        outcomes.append(CaseOutcome(case, report, expected, claim_hit, store.results_seen, stage))
+        search_hit, hit_as_evidence = measure_search(case, report, claim_hit, store.case_results, stems)
+        stage = diagnose(case, report, expected, claim_hit, store.results_seen, service.decision_service, search_hit)
+        outcomes.append(
+            CaseOutcome(case, report, expected, claim_hit, store.results_seen, stage, search_hit, hit_as_evidence)
+        )
         if quiet:
             continue
         # Caso de validação ou teste: nem o progresso diz qual errou
@@ -328,6 +392,28 @@ def format_categories(outcomes: list[CaseOutcome]) -> list[str]:
     return lines
 
 
+def format_search(outcomes: list[CaseOutcome]) -> list[str]:
+    """Funil dos casos com a frase certa: o resultado certo veio, virou evidência, o caso acertou."""
+    measured = [o for o in outcomes if o.search_hit is not None]
+    by_category: dict[str, list[CaseOutcome]] = defaultdict(list)
+    for outcome in measured:
+        by_category[outcome.case.category].append(outcome)
+    header = f"{'categoria':<16} {'casos':>5} {'busca':>7} {'evidência':>10} {'acerto':>7} {'sorte':>6}"
+    lines = ["Busca: o resultado certo veio entre os encontrados? (casos com a frase certa)", header]
+    groups = [(c, by_category[c]) for c in CATEGORIES if by_category[c]] + [("total", measured)]
+    for name, group in groups:
+        found = sum(bool(o.search_hit) for o in group)
+        as_evidence = sum(bool(o.hit_as_evidence) for o in group)
+        correct = sum(o.correct for o in group)
+        # Acertou sem o resultado certo na busca: evidência de outro assunto que calhou de concordar
+        lucky = sum(o.correct and not o.search_hit for o in group)
+        lines.append(
+            f"{name:<16} {len(group):>5} {percent(found, len(group)):>7} "
+            f"{percent(as_evidence, len(group)):>10} {percent(correct, len(group)):>7} {lucky:>6}"
+        )
+    return lines
+
+
 def format_stages(outcomes: list[CaseOutcome]) -> list[str]:
     errors = [o for o in outcomes if not o.correct]
     lines = [f"Onde os {len(errors)} erros aconteceram (primeira etapa que falhou)"]
@@ -348,10 +434,19 @@ def format_errors(outcomes: list[CaseOutcome]) -> list[str]:
         lines.append(f"    frase={report.claim!r}")
         lines.append(
             f"    palavras={list(report.keywords)} resultados={outcome.raw_results} evidências={len(report.evidences)}"
+            f" resultado certo={SEARCH_LABELS[outcome.search_hit, outcome.hit_as_evidence]}"
         )
         for evidence in report.evidences[:2]:
             lines.append(f"    · {evidence.stance:<11} {evidence.source_name}: {evidence.title[:90]!r}")
     return lines
+
+
+SEARCH_LABELS = {
+    (None, None): "-",
+    (False, False): "não veio",
+    (True, False): "veio, não virou evidência",
+    (True, True): "virou evidência",
+}
 
 
 def format_report(outcomes: list[CaseOutcome], use_event_date: bool, split: str) -> str:
@@ -361,6 +456,7 @@ def format_report(outcomes: list[CaseOutcome], use_event_date: bool, split: str)
         [f"Avaliação completa: {len(outcomes)} casos ({names[split]}), {mode}"],
         format_categories(outcomes),
         format_confusion(outcomes),
+        format_search(outcomes),
         format_stages(outcomes),
         format_errors(outcomes),
     ]

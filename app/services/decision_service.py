@@ -42,6 +42,9 @@ class DecisionService:
         )
 
     def is_strong(self, evidence: EvidenceItem) -> bool:
+        # Manchete praticamente igual à afirmação sustenta mesmo com nota baixa do modelo (veja detect_stance)
+        if evidence.verdict is None and evidence.relevance >= self.settings.evidence_identical_relevance:
+            return True
         # Reportagem avaliada pelo modelo: a posição "sustenta" já exigiu a implicação mínima
         if evidence.verdict is None and evidence.entailment is not None:
             return evidence.entailment >= self.settings.nli_min_entailment

@@ -4,7 +4,7 @@ import pytest
 
 from app.core.exceptions import ServiceUnavailableError
 from app.services.evidence_service import EvidenceService, to_hypothesis
-from tests.fakes import FakeEntailmentModel, make_outcome, make_result
+from tests.fakes import FakeEntailmentModel, FakeTagger, make_outcome, make_result
 
 CLAIM = "Ivermectina tem 70% de eficácia contra a Covid, diz estudo"
 
@@ -409,3 +409,26 @@ def test_roundup_page_does_not_contradict_the_claim(evidence_service, verificati
                              excerpt="É falso que a COP30 foi transferida")],
     })
     assert all(evidence.stance != "contradicts" for evidence in evidences)
+
+
+IMA_CLAIM = "Depois que tomei a vacina da covid o ímã gruda no braço"
+IMA_HEADLINE = "Ímã gruda no braço de quem tomou vacina contra Covid-19 #boato"
+
+
+def test_sentence_start_is_not_a_required_name(settings, verification_config, registry, rules):
+    # Sem a classe gramatical, "Depois" (começo da frase) era exigido na manchete e a checagem nem ia ao modelo
+    service = EvidenceService(settings, verification_config, registry, rules.stopwords,
+                              entailment_model=FakeEntailmentModel({}), tagger=FakeTagger({"Depois": "ADV"}))
+    assert service.required_stems(["", IMA_CLAIM], ("vacina", "covid")) == {"vacin", "covid"}
+
+
+def test_tagger_keeps_names_at_the_sentence_start(settings, verification_config, registry, rules):
+    tags = {"Neymar": "PROPN", "Real": "PROPN", "Madrid": "PROPN", "foi": "AUX", "pelo": "ADP"}
+    service = EvidenceService(settings, verification_config, registry, rules.stopwords, tagger=FakeTagger(tags))
+    assert service.required_stems(["", "Neymar foi contratado pelo Real Madrid"], ()) == {"neyma", "real", "madri"}
+
+
+def test_shouting_text_falls_back_to_the_keywords(settings, verification_config, registry, rules):
+    # Em maiúsculas toda palavra parecia nome: a manchete teria de repetir a frase inteira
+    service = evidence_service_without_model(settings, verification_config, registry, rules)
+    assert service.required_stems(["", "VACINAS CAUSAM AUTISMO"], ("vacinas", "autismo")) == {"vacin", "autis"}
