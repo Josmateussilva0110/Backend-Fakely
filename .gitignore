@@ -36,6 +36,9 @@ coverage.xml
 *.pickle
 /data/
 /datasets/
+# Buscas e notas do modelo gravadas pela avaliação: títulos e trechos de matérias de terceiros, que não
+# podem ser redistribuídos. Ficam só na máquina de quem roda a avaliação
+/training/cache/
 
 # --- Logs e bancos locais ---
 *.log

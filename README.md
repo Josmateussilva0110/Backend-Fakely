@@ -141,7 +141,7 @@ python -m training.evaluate_verification --event-date    # com a data do evento 
 python -m training.evaluate_verification --offline       # só com as buscas já gravadas
 ```
 
-As respostas das buscas ficam gravadas em `training/cache/search_results.json` e as notas do modelo de inferência textual em `training/cache/entailment_scores.json`. As duas são reaproveitadas: a medição é repetível, só buscas novas vão à internet e o modelo só é carregado quando aparece uma comparação nova. Com tudo gravado, a avaliação dos 250 casos leva poucos segundos. As notas gravadas valem só para a mesma versão do modelo; ao trocar de versão, elas são descartadas e recalculadas.
+As respostas das buscas ficam gravadas em `training/cache/search_results.json` e as notas do modelo de inferência textual em `training/cache/entailment_scores.json`. As duas são reaproveitadas: a medição é repetível, só buscas novas vão à internet e o modelo só é carregado quando aparece uma comparação nova. O cache fica **fora do Git** (`.gitignore`): ele guarda títulos e trechos de matérias de terceiros, que não podem ser redistribuídos. Cada pessoa gera o seu rodando a avaliação com internet (`--split all`, com e sem `--event-date`). Sem o cache, a trava dos erros graves (`tests/training/test_serious_errors.py`) é pulada com um aviso. Com tudo gravado, a avaliação dos 250 casos leva poucos segundos. As notas gravadas valem só para a mesma versão do modelo; ao trocar de versão, elas são descartadas e recalculadas.
 
 **Busca de parâmetros:** testa combinações dos limiares de evidência e de decisão (nota mínima do modelo, semelhança mínima, janela de data, número de fontes) e guarda sempre a melhor:
 
@@ -234,7 +234,7 @@ Na listagem, cada item traz só `id`, `analyzed_at`, `news`, `claim` e o resumo 
 | Fontes confiáveis sustentam a afirmação | `likely_true` |
 | Fontes divergem, nenhuma evidência, fontes fora do ar ou texto curto | `inconclusive` |
 
-- **Fontes consultadas:** Agência Lupa e Boatos.org (checagem); Folha de S.Paulo, CNN Brasil, Veja e Exame (jornalismo). A lista fica em `app/data/verification_sources.json`.
+- **Fontes consultadas:** Boatos.org (checagem); Folha de S.Paulo e Veja (jornalismo). A lista fica em `app/data/verification_sources.json`. Só entram sites cujos `robots.txt` e termos de uso não proíbem a busca por programas. Ficam de fora até haver autorização: CNN Brasil e Projeto Comprova (o `robots.txt` veda a API de busca, `/wp-json/`) e Agência Lupa e Exame (os termos de uso proíbem coleta automatizada). Folha, Veja e Boatos.org reservam os direitos sobre o conteúdo; o sistema mostra só título, trecho curto e link para a matéria.
 - **O que conta:** só evidências relevantes, de fontes cadastradas em `app/data/source_registry.json` e independentes entre si.
 - **Quando uma reportagem sustenta:** um modelo local de inferência textual ([mDeBERTa multilíngue](https://huggingface.co/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7), licença MIT) estima se a manchete implica a afirmação, mesmo com outras palavras ("anunciado como piloto da Haas na F1" × "contratado para a Fórmula 1"). A manchete também precisa citar os nomes próprios da afirmação, e não pode desmentir o fato ("nega", "descarta").
 - **Data:** uma reportagem só sustenta se foi publicada até `EVIDENCE_SUPPORT_WINDOW_DAYS` (60) dias da data da notícia, ou da análise quando a notícia não tem data. Assim, a passagem anterior de um técnico não confirma que ele é "o novo técnico". As mais distantes aparecem como contexto.

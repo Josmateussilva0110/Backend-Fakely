@@ -40,9 +40,11 @@ from tests.conftest import SENSATIONAL_TEXT
 # mais difíceis: afirmação 90% -> 88,8%, intenção 88% -> 86,5%; palavras-chave 77% -> 79,8%.
 # Verbos do fato ("condena", "morreu") disputando a busca com os nomes e texto em maiúsculas passando pelo
 # modelo em minúsculas: palavras-chave 79,8% -> 82,5%; título vago com "Brasil": afirmação 88,8% -> 89,3%.
-MIN_DATASET_CLAIM_ACCURACY = 0.89
+# Aberturas de conversa ("Meu Deus gente", "Me contaram que"), rótulo de fala ("... e falou:"), emojis e o
+# comentário depois do fato na mensagem: afirmação 89,3% -> 92,7%; intenção 86,5% -> 88,2%.
+MIN_DATASET_CLAIM_ACCURACY = 0.92
 MIN_DATASET_KEYWORD_RECALL = 0.82
-MIN_DATASET_INTENT_ACCURACY = 0.86
+MIN_DATASET_INTENT_ACCURACY = 0.88
 
 
 @pytest.fixture
@@ -206,3 +208,29 @@ def test_expected_keyword_accepts_any_alternative():
 def test_title_whose_only_name_is_brasil_loses_to_the_body(claim_service):
     text = "A cantora Marília Mendonça morreu na queda do avião em que viajava para um show em Minas Gerais."
     assert claim_service.extract(text, "A notícia que parou o Brasil nesta sexta") == text
+
+
+def test_conversation_opening_and_comment_are_removed(claim_service):
+    text = "Graças a Deus o Faustão conseguiu fazer o transplante de coração, deu tudo certo na cirurgia 🙏"
+    assert claim_service.extract(text) == "O Faustão conseguiu fazer o transplante de coração"
+
+
+def test_speech_label_before_colon_is_removed(claim_service):
+    text = "Minha cunhada é médica e falou: a cloroquina cura a Covid em poucos dias, só não divulgam porque é barata."
+    assert claim_service.extract(text) == "A cloroquina cura a Covid em poucos dias"
+
+
+def test_emoji_ends_the_sentence(claim_service):
+    text = "Meu Deus gente a ponte entre Tocantins e Maranhão caiu agora 😱 quem tiver parente que passa por lá avisa"
+    assert claim_service.extract(text) == "A ponte entre Tocantins e Maranhão caiu agora"
+
+
+def test_request_to_the_reader_is_removed_from_the_end(claim_service):
+    text = "O governo vai confiscar a poupança igual o Collor fez, saquem o dinheiro antes de segunda."
+    assert claim_service.extract(text) == "O governo vai confiscar a poupança igual o Collor fez"
+
+
+def test_news_sentence_keeps_its_commas(claim_service):
+    # Em notícia as vírgulas são do próprio fato: só sai o pedido ao leitor, e aqui não há
+    text = "A barragem da mina Córrego do Feijão, da Vale, rompeu em Brumadinho e a lama atingiu a área da empresa."
+    assert claim_service.extract(text) == text

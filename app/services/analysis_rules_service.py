@@ -24,6 +24,10 @@ class AnalysisRules(BaseModel):
     acronyms: frozenset[str]
     # Aberturas de pergunta e de conversa retiradas da afirmação ("é verdade que", "gente")
     claim_prefixes: frozenset[str]
+    # Verbo de fala no fim de um rótulo ("Minha cunhada é médica e falou: ..."): o que vem depois é a afirmação
+    speech_verbs: frozenset[str]
+    # Pedidos ao leitor no fim da mensagem ("..., saquem o dinheiro"): não fazem parte do fato
+    call_to_action_terms: frozenset[str]
     # Marcas de opinião: a frase não traz um fato verificável
     opinion_terms: frozenset[str]
     # Títulos chamativos que não dizem o fato ("você não vai acreditar")
@@ -47,6 +51,8 @@ class AnalysisRules(BaseModel):
         "alarmist_terms",
         "acronyms",
         "claim_prefixes",
+        "speech_verbs",
+        "call_to_action_terms",
         "opinion_terms",
         "vague_title_terms",
         "generic_terms",

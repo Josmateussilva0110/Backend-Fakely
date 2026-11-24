@@ -1,14 +1,6 @@
 {
   "sources": [
     {
-      "key": "lupa",
-      "name": "Agência Lupa",
-      "client": "wordpress",
-      "search_url": "https://www.agencialupa.org/wp-json/wp/v2/posts",
-      "allowed_domains": ["agencialupa.org", "lupa.uol.com.br"],
-      "default_verdict": null
-    },
-    {
       "key": "folha",
       "name": "Folha de S.Paulo",
       "client": "folha",
@@ -17,27 +9,11 @@
       "default_verdict": null
     },
     {
-      "key": "cnn_brasil",
-      "name": "CNN Brasil",
-      "client": "wordpress",
-      "search_url": "https://www.cnnbrasil.com.br/wp-json/wp/v2/posts",
-      "allowed_domains": ["cnnbrasil.com.br"],
-      "default_verdict": null
-    },
-    {
       "key": "veja",
       "name": "Veja",
       "client": "wordpress",
       "search_url": "https://veja.abril.com.br/wp-json/wp/v2/posts",
       "allowed_domains": ["veja.abril.com.br"],
-      "default_verdict": null
-    },
-    {
-      "key": "exame",
-      "name": "Exame",
-      "client": "wordpress",
-      "search_url": "https://exame.com/wp-json/wp/v2/posts/",
-      "allowed_domains": ["exame.com"],
       "default_verdict": null
     },
     {

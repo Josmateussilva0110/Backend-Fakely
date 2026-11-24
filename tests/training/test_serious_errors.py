@@ -20,11 +20,12 @@ from training.evaluate_verification import (
 )
 
 # (grupo, com a data do evento): erros graves aceitos. O grupo de teste fica de fora: só ao fechar uma versão
+# Zero desde que o desmentido exige implicação nos dois sentidos e todos os nomes (ou manchete idêntica)
 MAX_SERIOUS_ERRORS = {
-    (TRAIN_SPLIT, True): 1,
-    (TRAIN_SPLIT, False): 1,
-    (VALIDATION_SPLIT, True): 2,
-    (VALIDATION_SPLIT, False): 3,
+    (TRAIN_SPLIT, True): 0,
+    (TRAIN_SPLIT, False): 0,
+    (VALIDATION_SPLIT, True): 0,
+    (VALIDATION_SPLIT, False): 0,
 }
 RECORD_COMMAND = "python -m training.evaluate_verification --split all [--event-date]"
 
@@ -35,6 +36,10 @@ def no_model():
 
 @pytest.fixture(scope="module")
 def offline_service():
+    # O cache fica fora do Git (trechos de matérias de terceiros): sem ele, não há como medir
+    missing = [path.name for path in (CACHE_PATH, ENTAILMENT_CACHE_PATH) if not path.exists()]
+    if missing:
+        pytest.skip(f"Cache da avaliação ausente ({', '.join(missing)}): rode {RECORD_COMMAND} para gerá-lo.")
     store = SearchStore(CACHE_PATH, "offline")
     entailments = EntailmentStore(ENTAILMENT_CACHE_PATH, entailment_model_id())
     # Nenhuma requisição sai do teste: busca sem gravação vira erro, não consulta ao site
