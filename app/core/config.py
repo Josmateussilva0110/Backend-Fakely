@@ -55,10 +55,16 @@ class Settings(BaseSettings):
     verification_max_results: int = 5
     verification_max_keywords: int = 4
     verification_min_keywords: int = 2
+    # Consulta extra com a palavra principal e as N seguintes que não couberam na principal; 0 desliga.
+    # Desligada: com 3, a busca subiu (validação sem data 71% -> 75%), mas veio 1 erro grave a mais na
+    # validação e cada site passa a fazer até 4 consultas em sequência dentro do limite de tempo
+    verification_extra_query_keywords: int = 0
 
     # Evidências: relevância mínima para listar e para pesar na decisão
     evidence_min_relevance: float = 0.5
     evidence_min_overlap: int = 2
+    # Fração dos nomes da afirmação, além do sujeito (sempre exigido), que a manchete precisa citar (para baixo)
+    evidence_min_name_share: float = 0.5
     evidence_excerpt_max_length: int = 300
     evidence_outdated_after_days: int = 730
     # Reportagem só sustenta se publicada até N dias da data da notícia (ou da análise, sem data):

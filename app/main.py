@@ -112,6 +112,7 @@ def build_verification_service(
             rules.stopwords,
             entailment_model=load_entailment_model(settings),
             tagger=tagger,
+            broad_names=rules.broad_names | rules.generic_terms,
         ),
     )
 

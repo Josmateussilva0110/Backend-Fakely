@@ -110,7 +110,8 @@ class EvidenceSearchService:
             return None
 
         period = self.period_around(reference_date) if reference_date else None
-        futures = {self.executor.submit(self._search_provider, p, keywords, period): p for p in self.providers}
+        extra = self.extra_query(claim, title, keywords)
+        futures = {self.executor.submit(self._search_provider, p, keywords, period, extra): p for p in self.providers}
         done, _ = wait(futures, timeout=self.settings.verification_total_timeout_seconds)
 
         results, checked, failed = [], [], []
@@ -144,6 +145,24 @@ class EvidenceSearchService:
         Retorna em ordem de especificidade: siglas (STF, Pix), substantivos e nomes próprios,
         verbos e depois as demais; dentro de cada grupo, na ordem em que aparecem.
         """
+        limit = self.settings.verification_max_keywords
+        return self._ranked_candidates(claim, title, limit)[:limit]
+
+    def extra_query(self, claim: str, title: str | None, keywords: list[str]) -> list[str] | None:
+        """Consulta curta com as palavras que não couberam: a principal mais as seguintes.
+
+        A busca dos sites exige todas as palavras, então mais vagas na mesma consulta filtram demais
+        (com 5 ou 6 a busca caiu de 75% para 69% na validação); numa consulta à parte, somam resultados.
+        """
+        size = self.settings.verification_extra_query_keywords
+        if not size or not keywords:
+            return None
+        needed = self.settings.verification_max_keywords + size
+        leftovers = [t for t in self._ranked_candidates(claim, title, needed) if t not in keywords][:size]
+        # Com uma palavra só sobrando, a consulta repetiria quase a principal
+        return [keywords[0], *leftovers] if len(leftovers) >= self.settings.verification_min_keywords else None
+
+    def _ranked_candidates(self, claim: str, title: str | None, needed: int) -> list[str]:
         # Com a classe gramatical, desempata pela posição: o assunto vem no começo da frase
         # ("Donald Trump venceu...") e as palavras longas costumam ser genéricas ("presidente",
         # "categoria"). Sem ela, todas ficam no mesmo grupo e o tamanho é o único sinal que resta
@@ -154,11 +173,9 @@ class EvidenceSearchService:
                 token = normalize_text(word)
                 if token and not is_number_like(token) and token not in self.ignored and token not in candidates:
                     candidates[token] = (rank, -len(candidates) if by_position else len(token))
-            if len(candidates) >= self.settings.verification_max_keywords:
+            if len(candidates) >= needed:
                 break
-
-        ranked = sorted(candidates, key=lambda t: candidates[t], reverse=True)
-        return ranked[: self.settings.verification_max_keywords]
+        return sorted(candidates, key=lambda t: candidates[t], reverse=True)
 
     def _ranked_words(self, text: str) -> list[tuple[str, int]]:
         shouting = is_shouting(text)
@@ -238,9 +255,17 @@ class EvidenceSearchService:
         return reference_date - window, reference_date + window
 
     def _search_provider(
-        self, provider: SearchProvider, keywords: list[str], period: Period | None = None
+        self,
+        provider: SearchProvider,
+        keywords: list[str],
+        period: Period | None = None,
+        extra: list[str] | None = None,
     ) -> list[SearchResult]:
         results = self._search_keywords(provider, keywords)
+        if extra:
+            known = {r.url for r in results}
+            limit = self.settings.verification_max_results
+            results += [r for r in provider.client.search(" ".join(extra), limit) if r.url not in known]
         # Eventos antigos ficam enterrados por matérias recentes com os mesmos nomes ("Croácia" na Copa
         # de 2026 tomava o lugar da eliminação de 2022). A busca sem data continua: checagens de boatos
         # que voltam a circular são de anos antes da notícia

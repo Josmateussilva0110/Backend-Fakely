@@ -40,7 +40,7 @@ from typing import Literal
 
 import httpx
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.integrations.search_client import Period, SearchClient, SearchError, SearchResult
 from app.main import build_verification_service, load_entailment_model
 from app.models.news_analysis_model import Classification, VerificationStatus
@@ -467,10 +467,13 @@ def format_report(outcomes: list[CaseOutcome], use_event_date: bool, split: str)
 
 
 def build_service(
-    store: SearchStore, http_client: httpx.Client, entailments: EntailmentStore | None = None
+    store: SearchStore,
+    http_client: httpx.Client,
+    entailments: EntailmentStore | None = None,
+    settings: Settings | None = None,
 ) -> VerificationService:
     """Mesmo serviço da API, com as buscas e as notas do modelo passando pela gravação."""
-    settings = get_settings()
+    settings = settings or get_settings()
     if not settings.verification_enabled:
         raise SystemExit("VERIFICATION_ENABLED=false no .env: a avaliação completa precisa da busca.")
     registry = load_source_registry(settings.source_registry_path)

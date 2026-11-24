@@ -419,19 +419,19 @@ def test_sentence_start_is_not_a_required_name(settings, verification_config, re
     # Sem a classe gramatical, "Depois" (começo da frase) era exigido na manchete e a checagem nem ia ao modelo
     service = EvidenceService(settings, verification_config, registry, rules.stopwords,
                               entailment_model=FakeEntailmentModel({}), tagger=FakeTagger({"Depois": "ADV"}))
-    assert service.required_stems(["", IMA_CLAIM], ("vacina", "covid")) == {"vacin", "covid"}
+    assert service.required_names([IMA_CLAIM, ""], ("vacina", "covid")).all == {"vacin", "covid"}
 
 
 def test_tagger_keeps_names_at_the_sentence_start(settings, verification_config, registry, rules):
     tags = {"Neymar": "PROPN", "Real": "PROPN", "Madrid": "PROPN", "foi": "AUX", "pelo": "ADP"}
     service = EvidenceService(settings, verification_config, registry, rules.stopwords, tagger=FakeTagger(tags))
-    assert service.required_stems(["", "Neymar foi contratado pelo Real Madrid"], ()) == {"neyma", "real", "madri"}
+    assert service.required_names(["Neymar foi contratado pelo Real Madrid", ""], ()).all == {"neyma", "real", "madri"}
 
 
 def test_shouting_text_falls_back_to_the_keywords(settings, verification_config, registry, rules):
     # Em maiúsculas toda palavra parecia nome: a manchete teria de repetir a frase inteira
     service = evidence_service_without_model(settings, verification_config, registry, rules)
-    assert service.required_stems(["", "VACINAS CAUSAM AUTISMO"], ("vacinas", "autismo")) == {"vacin", "autis"}
+    assert service.required_names(["VACINAS CAUSAM AUTISMO", ""], ("vacinas", "autismo")).all == {"vacin", "autis"}
 
 
 def test_model_alone_does_not_link_a_fact_check_about_another_subject(settings, verification_config, registry, rules):
@@ -461,3 +461,54 @@ def test_agency_denial_with_negation_still_contradicts(evidence_service, verific
         "lupa": [make_result("Receita Federal não está taxando o Pix; cobrança é golpe", "https://www.agencialupa.org/pix")],
     })
     assert evidences[0].stance == "contradicts"
+
+
+
+def test_subject_is_required_but_not_every_place(settings, verification_config, registry, rules):
+    # Exigir todos os nomes barrava a reportagem da queda em Vinhedo por não citar "Cascavel"
+    tags = {"Voepass": "PROPN", "Vinhedo": "PROPN", "Cascavel": "PROPN"}
+    service = EvidenceService(settings, verification_config, registry, rules.stopwords, tagger=FakeTagger(tags))
+    required = service.required_names(["Avião da Voepass que saiu de Cascavel cai em Vinhedo", ""], ())
+    assert required.subject == {"voepa"}
+    assert required.covered_by(service.stems("Avião da Voepass cai em Vinhedo"), 0.5)
+    # Sem o sujeito não basta: "Courtois renova com o Real Madrid" não fala de Neymar
+    assert not required.covered_by(service.stems("Avião cai entre Cascavel e Vinhedo"), 0.5)
+
+
+def test_fact_check_still_needs_every_name_to_contradict(settings, verification_config, registry, rules):
+    # O modelo deu 0,92 para esta checagem de outro fato; com a regra relaxada ela desmentia um fato verdadeiro
+    tags = {"OMS": "PROPN", "África": "PROPN", "Mpox": "PROPN"}
+    service = EvidenceService(settings, verification_config, registry, rules.stopwords, tagger=FakeTagger(tags))
+    required = service.required_names(["A OMS declarou emergência pela mpox por uma variante nova na África", ""], ())
+    headline = "É falso que OMS tenha decretado lockdown por causa de Mpox"
+    assert service.names_covered(required, headline, verdict=None)
+    assert not service.names_covered(required, headline, verdict="false")
+
+
+def fact_clause_service(settings, verification_config, registry, rules, tags):
+    return EvidenceService(settings, verification_config, registry, rules.stopwords, tagger=FakeTagger(tags))
+
+
+def test_fact_clause_drops_the_details_after_the_fact(settings, verification_config, registry, rules):
+    # Os detalhes que a manchete não traz derrubavam a nota do modelo (0,03 -> 0,85)
+    tags = {"Alemão": "PROPN", "Penha": "PROPN", "operação": "NOUN", "deixou": "VERB", "nos": "ADP"}
+    service = fact_clause_service(settings, verification_config, registry, rules, tags)
+    claim = "Uma operação policial nos complexos do Alemão e da Penha deixou mortos, na zona norte do Rio"
+    assert service.fact_clause(claim) == "Uma operação policial nos complexos do Alemão e da Penha deixou mortos"
+
+
+def test_fact_clause_keeps_the_apposition_and_decimal_numbers(settings, verification_config, registry, rules):
+    tags = {"Estados": "PROPN", "Unidos": "PROPN", "Donald": "PROPN", "Trump": "PROPN", "anunciou": "VERB",
+            "Guaíba": "PROPN", "atinge": "VERB"}
+    service = fact_clause_service(settings, verification_config, registry, rules, tags)
+    claim = "O presidente dos Estados Unidos, Donald Trump, anunciou uma tarifa, diz a Casa Branca"
+    assert service.fact_clause(claim) == "O presidente dos Estados Unidos, Donald Trump, anunciou uma tarifa"
+    assert service.fact_clause("Guaíba atinge 5,35 metros, diz órgão") == "Guaíba atinge 5,35 metros"
+
+
+def test_fact_clause_skips_openings_not_linked_to_the_fact(settings, verification_config, registry, rules):
+    # "Que notícia triste gente" tem verbo, mas nem nome nem palavra-chave: não é o fato
+    tags = {"é": "AUX", "Preta": "PROPN", "Gil": "PROPN", "morreu": "VERB"}
+    service = fact_clause_service(settings, verification_config, registry, rules, tags)
+    claim = "Que notícia triste é essa, a Preta Gil morreu nos Estados Unidos"
+    assert service.fact_clause(claim, ("preta", "morreu")) == claim

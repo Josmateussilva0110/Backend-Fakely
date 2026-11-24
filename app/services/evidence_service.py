@@ -1,5 +1,6 @@
 """Transforma resultados de busca em evidências: relevância, posição, deduplicação e independência."""
 
+import math
 import re
 import threading
 from dataclasses import dataclass, replace
@@ -54,7 +55,11 @@ _NEGATION = re.compile(r"(?<!\w)não(?!\w)\s*", re.IGNORECASE)
 REPORTING_CATEGORIES = ("official", "scientific", "news_outlet")
 PROPER_NOUN_CLASS = "PROPN"
 NEGATION_WORDS = frozenset({"nao", "nunca", "jamais"})
+NAME_CONNECTORS = frozenset({"da", "de", "do", "das", "dos"})
 _CLAUSE_END = re.compile(r"[,;:.!?]")
+# Vírgula entre orações, não a decimal ("5,35 metros")
+_CLAUSE_SPLIT = re.compile(r"(?<!\d)\s*[,;]\s*|\s*[,;]\s*(?!\d)")
+FACT_CLAUSE_VERBS = frozenset({"VERB", "AUX"})
 
 
 @dataclass(frozen=True)
@@ -78,6 +83,34 @@ class EvidenceItem:
     entailment: float | None = None
     # Reportagem distante da data da notícia: serve só de contexto, não sustenta
     out_of_window: bool = False
+
+
+@dataclass(frozen=True)
+class RequiredNames:
+    """Nomes da afirmação que a manchete precisa citar: o sujeito sempre, e uma parte dos demais.
+
+    Cada nome é o radical das suas palavras ("Minas Gerais" é um nome só). O sujeito vale com metade
+    das palavras ("Marília" basta para "Marília Mendonça"; só "Costa" não basta para "Gal Costa");
+    os demais, com qualquer uma.
+    """
+
+    subject: frozenset[str]
+    others: tuple[frozenset[str], ...] = ()
+    # Todos os nomes, inclusive os amplos: o que uma checagem precisa citar para desmentir a afirmação
+    every: frozenset[str] = frozenset()
+
+    @property
+    def all(self) -> frozenset[str]:
+        return self.subject.union(*self.others)
+
+    def covered_by(self, title_stems: set[str], others_share: float) -> bool:
+        subject_needed = math.ceil(len(self.subject) / 2)
+        others_needed = math.floor(len(self.others) * others_share)
+        others_cited = sum(1 for name in self.others if name & title_stems)
+        return len(self.subject & title_stems) >= subject_needed and others_cited >= others_needed
+
+    def covered_strictly_by(self, title_stems: set[str]) -> bool:
+        return self.every <= title_stems
 
 
 @dataclass(frozen=True)
@@ -118,6 +151,7 @@ class EvidenceService:
         stopwords: frozenset[str],
         entailment_model: EntailmentScorer | None = None,
         tagger: WordTagger | None = None,
+        broad_names: frozenset[str] = frozenset(),
     ):
         self.settings = settings
         self.verdict_patterns: VerdictPatterns = config.verdict_patterns
@@ -128,6 +162,8 @@ class EvidenceService:
         self.stopwords = stopwords
         self.entailment_model = entailment_model
         self.tagger = tagger
+        # Nomes e datas que não identificam o assunto ("Brasil", "Janeiro", "Deus"): não são exigidos
+        self.broad_names = broad_names
         # Compartilhado entre as requisições (o serviço é criado uma vez, no lifespan)
         self.inference_slots = threading.BoundedSemaphore(settings.nli_max_concurrent)
 
@@ -137,13 +173,13 @@ class EvidenceService:
         """reference_date: data da notícia; sem ela, vale o dia da análise."""
         reference = reference_date or outcome.accessed_at.date()
         claim_text = normalize_text(f"{title or ''} {claim}")
-        required = self.required_stems([title or "", claim], outcome.keywords)
+        required = self.required_names([claim, title or ""], outcome.keywords)
         claim_stems = self.stems(claim_text)
         quantities = extract_quantities(claim_text)
         candidates = self._candidates(
-            outcome, claim_stems, required, claim_stems - required, quantities, is_negated(main_clause(claim))
+            outcome, claim_stems, required, claim_stems - required.all, quantities, is_negated(main_clause(claim))
         )
-        entailments = self.score_entailment(candidates, claim)
+        entailments = self.score_entailment(candidates, claim, outcome.keywords)
         evidences = [
             evidence
             for candidate, entailment in zip(candidates, entailments, strict=True)
@@ -154,17 +190,47 @@ class EvidenceService:
         unique.sort(key=lambda e: (e.relevance, e.verdict is not None), reverse=True)
         return self.mark_independence(unique)
 
-    def required_stems(self, texts: list[str], keywords: tuple[str, ...]) -> set[str]:
-        """Nomes próprios da afirmação; sem nenhum (texto todo em minúsculas), as palavras-chave mais específicas.
+    def required_names(self, texts: list[str], keywords: tuple[str, ...]) -> RequiredNames:
+        """Nomes próprios da afirmação (a frase antes do título); sem nenhum, as palavras-chave mais específicas.
 
         O modelo dá nota alta a manchetes com as mesmas entidades e outro protagonista
-        ("Courtois renova com o Real Madrid" para "Neymar foi contratado pelo Real Madrid").
+        ("Courtois renova com o Real Madrid" para "Neymar foi contratado pelo Real Madrid"): o
+        sujeito, primeiro nome da frase, é sempre exigido. Exigir todos os nomes barrava a reportagem
+        certa quando a frase cita lugares e detalhes ("Voepass", "Vinhedo", "Cascavel", "Guarulhos").
         """
-        names = [name for text in texts for name in self.proper_nouns(text)]
-        return self.stems(" ".join(names)) or self.stems(" ".join(keywords[: self.settings.verification_min_keywords]))
+        specific = keywords[: self.settings.verification_min_keywords]
+        every = self.stems(" ".join(w for text in texts for w, is_name in self.name_flags(text) if is_name))
+        names = [name for text in texts for name in self.name_stems(text)]
+        if not names:
+            # Sem nomes (texto em minúsculas), as palavras-chave mais específicas fazem o papel deles
+            names = [name for name in (frozenset(self.stems(k)) for k in specific) if name]
+        if not names:
+            return RequiredNames(frozenset(), every=frozenset(every))
+        others = tuple(dict.fromkeys(name for name in names[1:] if name != names[0]))
+        return RequiredNames(names[0], others, frozenset(every or self.stems(" ".join(specific))))
 
-    def proper_nouns(self, text: str) -> list[str]:
-        """Nomes pela classe gramatical; sem o modelo, palavras com inicial maiúscula.
+    def name_stems(self, text: str) -> list[frozenset[str]]:
+        """Radicais de cada nome, na ordem da frase; nomes compostos juntos e sem os nomes amplos ("Brasil")."""
+        units, current = [], []
+        words = self.name_flags(text)
+        for i, (word, is_name) in enumerate(words):
+            if is_name:
+                current.append(word)
+                continue
+            # "Rio Grande do Sul", "Banco Central do Brasil": o conector fica dentro do nome
+            if current and normalize_text(word) in NAME_CONNECTORS and i + 1 < len(words) and words[i + 1][1]:
+                continue
+            units.append(current)
+            current = []
+        units.append(current)
+        stems = [
+            frozenset(self.stems(" ".join(w for w in unit if normalize_text(w) not in self.broad_names)))
+            for unit in units
+        ]
+        return [unit for unit in stems if unit]
+
+    def name_flags(self, text: str) -> list[tuple[str, bool]]:
+        """Cada palavra e se é nome: pela classe gramatical; sem o modelo, pela inicial maiúscula.
 
         Só a maiúscula confunde o começo da frase com nome ("Depois que tomei a vacina..." exigia
         "Depois" na manchete); só o modelo marca como nome placares e palavras em minúsculas ("3x2",
@@ -173,16 +239,16 @@ class EvidenceService:
         if is_shouting(text):
             return []
         if self.tagger is None:
-            return [word for word in WORD_PATTERN.findall(text) if word[0].isupper()]
+            return [(word, word[0].isupper()) for word in WORD_PATTERN.findall(text)]
         return [
-            word for word, word_class in self.tagger.tag(text) if word_class == PROPER_NOUN_CLASS and word[0].isupper()
+            (word, word_class == PROPER_NOUN_CLASS and word[0].isupper()) for word, word_class in self.tagger.tag(text)
         ]
 
     def _candidates(
         self,
         outcome: SearchOutcome,
         claim_stems: set[str],
-        required: set[str],
+        required: RequiredNames,
         fact_stems: set[str],
         quantities: dict[str, set[float]],
         claim_negated: bool = False,
@@ -207,7 +273,7 @@ class EvidenceService:
                         source_results.source,
                         result,
                         relevance,
-                        names_covered=required <= self.stems(result.title),
+                        names_covered=self.names_covered(required, result.title, verdict),
                         fact_covered=not fact_stems or bool(fact_stems & self.stems(self.premise(result))),
                         registered=registered,
                         verdict=verdict,
@@ -220,7 +286,9 @@ class EvidenceService:
                 )
         return candidates
 
-    def score_entailment(self, candidates: list[Candidate], claim: str) -> list[float | None]:
+    def score_entailment(
+        self, candidates: list[Candidate], claim: str, keywords: tuple[str, ...] = ()
+    ) -> list[float | None]:
         """Implicação de cada resultado; None sem o modelo ou quando faltam os nomes ou o fato da afirmação.
 
         Reportagem: a manchete ou o resumo implicam a afirmação. Checagem com veredito: o boato
@@ -232,11 +300,35 @@ class EvidenceService:
         hypothesis = to_hypothesis(claim)
         reports = [i for i, c in enumerate(candidates) if c.verdict is None and c.names_covered and c.fact_covered]
         checks = [i for i, c in enumerate(candidates) if c.verdict is not None and c.is_same_fact and c.names_covered]
-        report_scores = self.score_reports([candidates[i] for i in reports], hypothesis)
+        # Reportagem: só a oração do fato; o boato julgado continua comparado com a frase inteira
+        report_hypothesis = to_hypothesis(self.fact_clause(claim, keywords))
+        report_scores = self.score_reports([candidates[i] for i in reports], report_hypothesis)
         rumor_scores = self.score_rumors([candidates[i] for i in checks], hypothesis)
         for index, score in zip([*reports, *checks], [*report_scores, *rumor_scores], strict=True):
             scores[index] = score
         return scores
+
+    def fact_clause(self, claim: str, keywords: tuple[str, ...] = ()) -> str:
+        """Começo da frase até a primeira oração com verbo ligada ao fato (cita um nome ou palavra-chave).
+
+        Detalhes que a manchete não traz derrubam a nota do modelo: "Uma operação policial nos
+        complexos do Alemão e da Penha, na zona norte do Rio, deixou mais de cem mortos" deu 0,03
+        para "Megaoperação tenta prender 100 membros do CV no Alemão e Penha"; só a primeira
+        oração, 0,85. O aposto entre vírgulas fica junto ("O presidente dos EUA, Donald Trump,
+        anunciou...") e o que vem depois sai ("..., não esqueçam de adiantar o relógio").
+        """
+        if self.tagger is None:
+            return claim
+        parts = [part for part in _CLAUSE_SPLIT.split(claim.rstrip(" .!?")) if part]
+        linked = False
+        for end, part in enumerate(parts, start=1):
+            tagged = self.tagger.tag(part)
+            # O nome pode estar no aposto antes do verbo ("Donald Trump, anunciou...")
+            tokens = set(tokenize(normalize_text(part)))
+            linked = linked or bool(tokens & set(keywords)) or any(c == PROPER_NOUN_CLASS for _, c in tagged)
+            if linked and any(word_class in FACT_CLAUSE_VERBS for _, word_class in tagged):
+                return ", ".join(parts[:end])
+        return claim
 
     def score_reports(self, candidates: list[Candidate], hypothesis: str) -> list[float]:
         if not candidates:
@@ -267,6 +359,18 @@ class EvidenceService:
             text = _NEGATION.sub("", text, count=1)
         text = _RUMOR_TRAILING.sub("", _RUMOR_LEADING.sub("", text))
         return " ".join(text.split()) or title
+
+    def names_covered(self, required: RequiredNames, title: str, verdict: Verdict | None) -> bool:
+        """Reportagem: o sujeito e parte dos outros nomes. Checagem com veredito: todos os nomes.
+
+        Só o veredito pode chamar um fato verdadeiro de falso, e o modelo dá nota alta a checagens
+        de outro fato com os mesmos nomes ("É falso que OMS tenha decretado lockdown por causa de
+        Mpox" contra "OMS declarou emergência por causa da mpox", 0,92). Para elas, a regra estrita.
+        """
+        title_stems = self.stems(title)
+        if verdict is not None:
+            return required.covered_strictly_by(title_stems)
+        return required.covered_by(title_stems, self.settings.evidence_min_name_share)
 
     def same_polarity(self, title: str, rumor: str | None, claim_negated: bool) -> bool:
         """O boato julgado diz o fato no mesmo sentido da afirmação; só se sabe quando a manchete o apresenta.
