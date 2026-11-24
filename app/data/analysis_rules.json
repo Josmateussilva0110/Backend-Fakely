@@ -234,7 +234,27 @@
     "olha",
     "gente",
     "pessoal",
-    "kkk"
+    "kkk",
+    "meu deus",
+    "graças a deus",
+    "que horror",
+    "que tristeza",
+    "que notícia triste",
+    "infelizmente",
+    "me contaram que",
+    "fiquei sabendo que",
+    "a publicação afirma que",
+    "a publicação diz que",
+    "a postagem afirma que",
+    "a postagem diz que",
+    "a mensagem diz que",
+    "o vídeo afirma que",
+    "o post diz que"
+  ],
+  "speech_verbs": ["falou", "disse", "contou", "avisou", "mandou", "escreveu", "postou"],
+  "call_to_action_terms": [
+    "saquem", "levem", "avisa", "avisem", "corram", "fiquem", "repassem", "compartilhem", "cuidado",
+    "não esqueçam", "não deixem", "tirem", "guardem", "abasteçam", "comprem", "rezem", "orem"
   ],
   "opinion_terms": [
     "acho",

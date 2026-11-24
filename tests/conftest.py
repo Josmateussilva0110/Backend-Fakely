@@ -27,7 +27,10 @@ from app.models import evidence_model, news_analysis_model, news_model  # noqa: 
 from app.services.analysis_rules_service import load_analysis_rules  # noqa: E402
 from app.services.evidence_service import EvidenceService  # noqa: E402
 from app.services.source_registry_service import load_source_registry  # noqa: E402
-from app.services.verification_config_service import load_verification_config  # noqa: E402
+from app.services.verification_config_service import (  # noqa: E402
+    VerificationSourceConfig,
+    load_verification_config,
+)
 from app.services.verification_service import VerificationService  # noqa: E402
 
 ADMIN_HEADERS = {"X-API-Key": "test-admin-key"}
@@ -57,9 +60,31 @@ def registry(settings):
     return load_source_registry(settings.source_registry_path)
 
 
+# Fontes dos testes, fixas: os testes descrevem o comportamento com uma agência de checagem e veículos de
+# exemplo, sem depender de quais sites estão ativos em produção (as marcas de veredito são as de produção)
+TEST_SOURCES = [
+    {"key": "lupa", "name": "Agência Lupa", "client": "wordpress",
+     "search_url": "https://www.agencialupa.org/wp-json/wp/v2/posts", "allowed_domains": ["agencialupa.org"]},
+    {"key": "folha", "name": "Folha de S.Paulo", "client": "folha",
+     "search_url": "https://search.folha.uol.com.br/search", "allowed_domains": ["folha.uol.com.br"]},
+    {"key": "veja", "name": "Veja", "client": "wordpress",
+     "search_url": "https://veja.abril.com.br/wp-json/wp/v2/posts", "allowed_domains": ["veja.abril.com.br"]},
+    {"key": "exame", "name": "Exame", "client": "wordpress",
+     "search_url": "https://exame.com/wp-json/wp/v2/posts/", "allowed_domains": ["exame.com"]},
+    {"key": "boatos", "name": "Boatos.org", "client": "wordpress",
+     "search_url": "https://www.boatos.org/wp-json/wp/v2/posts", "allowed_domains": ["boatos.org"]},
+]
+
+
 @pytest.fixture
-def verification_config(settings):
+def production_verification_config(settings):
     return load_verification_config(settings.verification_sources_path)
+
+
+@pytest.fixture
+def verification_config(production_verification_config):
+    sources = tuple(VerificationSourceConfig(**source) for source in TEST_SOURCES)
+    return production_verification_config.model_copy(update={"sources": sources})
 
 
 @pytest.fixture
