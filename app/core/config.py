@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     # evita que "X é o novo técnico" seja confirmado pela passagem anterior do mesmo técnico
     evidence_support_window_days: int = 60
     decision_min_relevance: float = 0.7
+    # Veredito de checagem ligado pelo modelo NLI ainda exige palavras em comum: abaixo disso as
+    # checagens eram de outro assunto (cloroquina ligada a "Médicos por la Verdad...", 0,19 a 0,30)
+    verdict_min_relevance: float = 0.4
     # Manchete praticamente igual à afirmação: sustenta mesmo quando o modelo NLI discorda
     # (ele deu 0,48 para "Vini Jr faz hat-trick e Brasil encerra 2026 com 7 a 0 sobre Singapura" contra ela mesma)
     evidence_identical_relevance: float = 0.95

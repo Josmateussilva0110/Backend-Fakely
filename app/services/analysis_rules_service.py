@@ -34,6 +34,10 @@ class AnalysisRules(BaseModel):
     future_terms: frozenset[str]
     # Datas e medidas de tempo ("domingo", "anos", "a partir de"): têm sentido, mas não ajudam a busca
     generic_terms: frozenset[str]
+    # Nomes que não identificam o assunto: "A notícia que parou o Brasil" não diz o fato
+    broad_names: frozenset[str]
+    # Começo de verbos que dizem o fato ("condena", "morreu", "desabou"): disputam a busca com os nomes
+    fact_verb_stems: frozenset[str]
     style_thresholds: StyleThresholds
 
     # Termos são comparados com o texto normalizado (minúsculo e sem acento)
@@ -46,6 +50,8 @@ class AnalysisRules(BaseModel):
         "opinion_terms",
         "vague_title_terms",
         "generic_terms",
+        "broad_names",
+        "fact_verb_stems",
         "open_question_terms",
         "future_terms",
         mode="before",

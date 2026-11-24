@@ -23,8 +23,15 @@ class SearchResult:
     published_at: date | None
 
 
+# Primeiro e último dia aceitos na publicação
+Period = tuple[date, date]
+
+
 class SearchClient(Protocol):
-    def search(self, query: str, limit: int) -> list[SearchResult]: ...
+    # Clientes que filtram pela data de publicação; os demais ignoram o período
+    supports_period: bool
+
+    def search(self, query: str, limit: int, period: Period | None = None) -> list[SearchResult]: ...
 
 
 def html_to_text(html: str) -> str:

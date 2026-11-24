@@ -117,13 +117,22 @@ class ClaimExtractionService:
         return len(label_words) if find_terms(normalize_text(head), self.label_terms) else 0
 
     def _specific_words(self, text: str) -> int:
-        """Siglas e nomes próprios; num texto todo em maiúsculas a caixa não indica nome próprio."""
+        """Siglas e nomes próprios; num texto todo em maiúsculas a caixa não indica nome próprio.
+
+        Nomes amplos ("Brasil") e datas com maiúscula ("Sexta") não contam: não dizem de que fato se trata.
+        Letra maiúscula sozinha no meio da frase é nome ("o X foi suspenso"), não sigla.
+        """
         words = WORD_PATTERN.findall(text)
         shouting = is_shouting(text)
         acronyms = sum(1 for word in words if is_acronym(word, self.rules.acronyms, shouting))
         if shouting:
             return acronyms
-        proper_nouns = sum(1 for word in words[1:] if word[0].isupper() and not word.isupper())
+        ignored = self.rules.broad_names | self.rules.generic_terms
+        proper_nouns = sum(
+            1
+            for word in words[1:]
+            if word[0].isupper() and (len(word) == 1 or not word.isupper()) and normalize_text(word) not in ignored
+        )
         return acronyms + proper_nouns
 
     def _is_opinion(self, text: str) -> bool:

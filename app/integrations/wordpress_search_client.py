@@ -3,22 +3,35 @@
 import json
 
 from app.core.parsing import parse_iso_date
-from app.integrations.search_client import HttpFetcher, SearchError, SearchResult, html_to_text, is_allowed_url
+from app.integrations.search_client import (
+    HttpFetcher,
+    Period,
+    SearchError,
+    SearchResult,
+    html_to_text,
+    is_allowed_url,
+)
 
 
 class WordpressSearchClient:
+    supports_period = True
+
     def __init__(self, fetcher: HttpFetcher, search_url: str, allowed_domains: tuple[str, ...]):
         self.fetcher = fetcher
         self.search_url = search_url
         self.allowed_domains = allowed_domains
 
-    def search(self, query: str, limit: int) -> list[SearchResult]:
+    def search(self, query: str, limit: int, period: Period | None = None) -> list[SearchResult]:
         params = {
             "search": query,
             "per_page": limit,
             "orderby": "relevance",
             "_fields": "title,link,date,excerpt",
         }
+        if period is not None:
+            # A API compara data e hora (ISO 8601): o dia final entra inteiro
+            params["after"] = f"{period[0].isoformat()}T00:00:00"
+            params["before"] = f"{period[1].isoformat()}T23:59:59"
         body = self.fetcher.get_text(self.search_url, params, self.allowed_domains)
         try:
             posts = json.loads(body)

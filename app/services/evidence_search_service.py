@@ -3,13 +3,13 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import httpx
 
 from app.core.config import Settings
 from app.integrations.folha_search_client import FolhaSearchClient
-from app.integrations.search_client import HttpFetcher, SearchClient, SearchError, SearchResult
+from app.integrations.search_client import HttpFetcher, Period, SearchClient, SearchError, SearchResult
 from app.integrations.wordpress_search_client import WordpressSearchClient
 from app.ml.part_of_speech_tagger import WordTagger
 from app.services.text_processing_service import WORD_PATTERN, is_acronym, is_shouting, normalize_text, tokenize
@@ -25,6 +25,8 @@ VERB_RANK = 1
 OTHER_WORD_RANK = 0
 NOUN_CLASSES = frozenset({"NOUN", "PROPN"})
 VERB_CLASSES = frozenset({"VERB"})
+# Particípios ("eleito", "condenado") às vezes saem como adjetivo
+FACT_VERB_CLASSES = frozenset({"VERB", "ADJ"})
 PROPER_NOUN_CLASS = "PROPN"
 # Ligam as partes de um nome composto ("Luiz Inácio Lula da Silva", "Banco Central do Brasil")
 NAME_CONNECTORS = frozenset({"da", "de", "do", "das", "dos"})
@@ -60,6 +62,7 @@ class EvidenceSearchService:
         acronyms: frozenset[str] = frozenset(),
         tagger: WordTagger | None = None,
         generic_terms: frozenset[str] = frozenset(),
+        fact_verb_stems: frozenset[str] = frozenset(),
     ):
         self.settings = settings
         self.stopwords = stopwords
@@ -67,6 +70,7 @@ class EvidenceSearchService:
         self.acronyms = acronyms
         self.tagger = tagger
         self.ignored = stopwords | generic_terms
+        self.fact_verb_stems = tuple(sorted(fact_verb_stems))
         self.executor = ThreadPoolExecutor(max_workers=max(len(providers), 1), thread_name_prefix="search")
 
     @classmethod
@@ -79,10 +83,11 @@ class EvidenceSearchService:
         acronyms: frozenset[str] = frozenset(),
         tagger: WordTagger | None = None,
         generic_terms: frozenset[str] = frozenset(),
+        fact_verb_stems: frozenset[str] = frozenset(),
     ) -> "EvidenceSearchService":
         fetcher = HttpFetcher(http_client, settings.verification_max_response_bytes)
         providers = [SearchProvider(source, cls._build_client(source, fetcher)) for source in config.sources]
-        return cls(settings, stopwords, providers, acronyms, tagger, generic_terms)
+        return cls(settings, stopwords, providers, acronyms, tagger, generic_terms, fact_verb_stems)
 
     @staticmethod
     def _build_client(source: VerificationSourceConfig, fetcher: HttpFetcher) -> SearchClient:
@@ -98,12 +103,14 @@ class EvidenceSearchService:
     def close(self) -> None:
         self.executor.shutdown(wait=False, cancel_futures=True)
 
-    def search(self, claim: str, title: str | None = None) -> SearchOutcome | None:
+    def search(self, claim: str, title: str | None = None, reference_date: date | None = None) -> SearchOutcome | None:
+        """reference_date: data da notícia; com ela, a busca também procura dentro da janela de publicação."""
         keywords = self.extract_keywords(claim, title)
         if len(keywords) < self.settings.verification_min_keywords:
             return None
 
-        futures = {self.executor.submit(self._search_provider, p, keywords): p for p in self.providers}
+        period = self.period_around(reference_date) if reference_date else None
+        futures = {self.executor.submit(self._search_provider, p, keywords, period): p for p in self.providers}
         done, _ = wait(futures, timeout=self.settings.verification_total_timeout_seconds)
 
         results, checked, failed = [], [], []
@@ -140,7 +147,7 @@ class EvidenceSearchService:
         # Com a classe gramatical, desempata pela posição: o assunto vem no começo da frase
         # ("Donald Trump venceu...") e as palavras longas costumam ser genéricas ("presidente",
         # "categoria"). Sem ela, todas ficam no mesmo grupo e o tamanho é o único sinal que resta
-        by_position = self._uses_tagger(claim)
+        by_position = self.tagger is not None
         candidates: dict[str, tuple[int, int]] = {}
         for chunk in (claim, title):
             for word, rank in self._ranked_words(chunk or ""):
@@ -153,15 +160,13 @@ class EvidenceSearchService:
         ranked = sorted(candidates, key=lambda t: candidates[t], reverse=True)
         return ranked[: self.settings.verification_max_keywords]
 
-    def _uses_tagger(self, text: str) -> bool:
-        # Texto todo em maiúsculas engana o modelo ("TRUMP ANUNCIA" vira organização) e a regra da caixa
-        return self.tagger is not None and not is_shouting(text)
-
     def _ranked_words(self, text: str) -> list[tuple[str, int]]:
         shouting = is_shouting(text)
-        if self.tagger is not None and not shouting:
-            words = self._drop_name_middles(self.tagger.tag(text))
-            tagged = [(word, self._class_rank(word_class)) for word, word_class in words]
+        if self.tagger is not None:
+            # Texto todo em maiúsculas engana o modelo ("TRUMP ANUNCIA" vira organização): vai em
+            # minúsculas, que basta para separar substantivo de verbo; as siglas vêm da lista conhecida
+            words = self._drop_name_middles(self.tagger.tag(text.lower() if shouting else text))
+            tagged = [(word, self._word_rank(word, word_class)) for word, word_class in words]
         else:
             tagged = [
                 (word, NOUN_RANK if word[0].isupper() and not shouting else OTHER_WORD_RANK)
@@ -214,13 +219,39 @@ class EvidenceSearchService:
             and not is_acronym(word, self.acronyms, False)
         )
 
+    def _word_rank(self, word: str, word_class: str) -> int:
+        # Verbo do fato vale como substantivo e entra pela posição: "STF condena Bolsonaro" busca
+        # "condena" no lugar de "prisao" ou "trama", que aparecem em qualquer notícia do caso
+        if word_class in FACT_VERB_CLASSES and normalize_text(word).startswith(self.fact_verb_stems):
+            return NOUN_RANK
+        return self._class_rank(word_class)
+
     @staticmethod
     def _class_rank(word_class: str) -> int:
         if word_class in NOUN_CLASSES:
             return NOUN_RANK
         return VERB_RANK if word_class in VERB_CLASSES else OTHER_WORD_RANK
 
-    def _search_provider(self, provider: SearchProvider, keywords: list[str]) -> list[SearchResult]:
+    def period_around(self, reference_date: date) -> Period:
+        # A mesma janela em que uma reportagem pode sustentar a afirmação
+        window = timedelta(days=self.settings.evidence_support_window_days)
+        return reference_date - window, reference_date + window
+
+    def _search_provider(
+        self, provider: SearchProvider, keywords: list[str], period: Period | None = None
+    ) -> list[SearchResult]:
+        results = self._search_keywords(provider, keywords)
+        # Eventos antigos ficam enterrados por matérias recentes com os mesmos nomes ("Croácia" na Copa
+        # de 2026 tomava o lugar da eliminação de 2022). A busca sem data continua: checagens de boatos
+        # que voltam a circular são de anos antes da notícia
+        if period is not None and provider.client.supports_period:
+            known = {r.url for r in results}
+            query = " ".join(keywords)
+            limit = self.settings.verification_max_results
+            results += [r for r in provider.client.search(query, limit, period) if r.url not in known]
+        return results
+
+    def _search_keywords(self, provider: SearchProvider, keywords: list[str]) -> list[SearchResult]:
         limit = self.settings.verification_max_results
         results = provider.client.search(" ".join(keywords), limit)
         # A busca com todas as palavras pode não trazer nada ou trazer só outro assunto

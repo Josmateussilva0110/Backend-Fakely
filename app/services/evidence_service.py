@@ -53,6 +53,8 @@ _NEGATION = re.compile(r"(?<!\w)não(?!\w)\s*", re.IGNORECASE)
 # Categorias que publicam apuração própria e podem sustentar uma afirmação
 REPORTING_CATEGORIES = ("official", "scientific", "news_outlet")
 PROPER_NOUN_CLASS = "PROPN"
+NEGATION_WORDS = frozenset({"nao", "nunca", "jamais"})
+_CLAUSE_END = re.compile(r"[,;:.!?]")
 
 
 @dataclass(frozen=True)
@@ -93,11 +95,14 @@ class Candidate:
     fact_in_title: bool = True
     # Idade, porcentagem e valores batem com os da afirmação (quando os dois textos os citam)
     same_numbers: bool = True
+    # O boato julgado e a afirmação dizem o fato no mesmo sentido (os dois com "não", ou nenhum)
+    same_polarity: bool = True
 
     @property
     def is_same_fact(self) -> bool:
-        # "Silvio Santos morreu aos 86 anos #boato" é um boato antigo, não a morte aos 93
-        return self.fact_in_title and self.same_numbers
+        # "Silvio Santos morreu aos 86 anos #boato" é um boato antigo, não a morte aos 93;
+        # "Marília Mendonça não morreu e está bem #boato" desmente o contrário da morte, não a morte
+        return self.fact_in_title and self.same_numbers and self.same_polarity
 
     @property
     def category(self) -> "EvidenceCategory":
@@ -118,6 +123,7 @@ class EvidenceService:
         self.verdict_patterns: VerdictPatterns = config.verdict_patterns
         self.denial_terms = config.denial_terms
         self.roundup_terms = config.roundup_terms
+        self.rumor_markers = config.rumor_markers
         self.registry = registry
         self.stopwords = stopwords
         self.entailment_model = entailment_model
@@ -134,7 +140,9 @@ class EvidenceService:
         required = self.required_stems([title or "", claim], outcome.keywords)
         claim_stems = self.stems(claim_text)
         quantities = extract_quantities(claim_text)
-        candidates = self._candidates(outcome, claim_stems, required, claim_stems - required, quantities)
+        candidates = self._candidates(
+            outcome, claim_stems, required, claim_stems - required, quantities, is_negated(main_clause(claim))
+        )
         entailments = self.score_entailment(candidates, claim)
         evidences = [
             evidence
@@ -177,6 +185,7 @@ class EvidenceService:
         required: set[str],
         fact_stems: set[str],
         quantities: dict[str, set[float]],
+        claim_negated: bool = False,
     ) -> list[Candidate]:
         """Resultados com palavras suficientes em comum com a afirmação (filtro antes do modelo).
 
@@ -191,6 +200,8 @@ class EvidenceService:
                     continue
                 registered = self.registry.find(result.url)
                 category: EvidenceCategory = registered.category if registered else "unknown"
+                verdict = self.detect_verdict(source_results.source, result, category)
+                rumor = self.rumor(result.title, verdict) if verdict is not None else None
                 candidates.append(
                     Candidate(
                         source_results.source,
@@ -199,11 +210,12 @@ class EvidenceService:
                         names_covered=required <= self.stems(result.title),
                         fact_covered=not fact_stems or bool(fact_stems & self.stems(self.premise(result))),
                         registered=registered,
-                        verdict=self.detect_verdict(source_results.source, result, category),
+                        verdict=verdict,
                         fact_in_title=not fact_stems or bool(fact_stems & self.stems(result.title)),
                         same_numbers=not quantities_conflict(
                             quantities, extract_quantities(normalize_text(result.title))
                         ),
+                        same_polarity=self.same_polarity(result.title, rumor, claim_negated),
                     )
                 )
         return candidates
@@ -255,6 +267,16 @@ class EvidenceService:
             text = _NEGATION.sub("", text, count=1)
         text = _RUMOR_TRAILING.sub("", _RUMOR_LEADING.sub("", text))
         return " ".join(text.split()) or title
+
+    def same_polarity(self, title: str, rumor: str | None, claim_negated: bool) -> bool:
+        """O boato julgado diz o fato no mesmo sentido da afirmação; só se sabe quando a manchete o apresenta.
+
+        "Marília Mendonça não morreu e está bem #boato" julga o "não morreu". Já em "Receita não está
+        taxando o Pix; cobrança é golpe" o "não" é da agência, e o boato é a taxação.
+        """
+        if rumor is None or not find_terms(normalize_text(title), self.rumor_markers):
+            return True
+        return is_negated(normalize_text(rumor)) == claim_negated
 
     def run_model(self, premises: list[str], claim: str) -> list[float]:
         if not self.inference_slots.acquire(timeout=self.settings.nli_queue_timeout_seconds):
@@ -475,6 +497,16 @@ def remove_spans(text: str, spans: list[tuple[int, int]]) -> str:
     return "".join(char if kept else " " for char, kept in zip(text, keep, strict=True))
 
 
+def is_negated(normalized_text: str) -> bool:
+    return bool(set(tokenize(normalized_text)) & NEGATION_WORDS)
+
+
+def main_clause(claim: str) -> str:
+    """Primeira oração, normalizada: em "confirmou a volta do horário de verão, não esqueçam..." o "não" é
+    um pedido ao leitor, não parte do fato."""
+    return normalize_text(_CLAUSE_END.split(claim, maxsplit=1)[0])
+
+
 def canonical_url(url: str) -> str:
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower().removeprefix("www.")
@@ -485,8 +517,14 @@ def verdict_matches_claim(relevance: float, entailment: float | None, settings: 
     """A checagem trata da mesma afirmação: palavras suficientes em comum ou implicação pelo modelo.
 
     "É falso que Tony Ramos morreu aos 89 anos em setembro de 2026 e morte foi anunciada na TV"
-    tem palavras demais para a relevância, mas o modelo reconhece a afirmação embutida.
+    tem palavras demais para a relevância, mas o modelo reconhece a afirmação embutida. Só o modelo
+    não basta: ele deu 0,80 para "Notícia sobre fábricas da Coca-Cola fechadas..." contra "A notícia
+    que parou o Brasil", e um veredito sobre outro assunto chamaria um fato verdadeiro de falso.
     """
-    if entailment is not None and entailment >= settings.nli_min_entailment:
+    if relevance >= settings.decision_min_relevance:
         return True
-    return relevance >= settings.decision_min_relevance
+    return (
+        entailment is not None
+        and entailment >= settings.nli_min_entailment
+        and relevance >= settings.verdict_min_relevance
+    )
