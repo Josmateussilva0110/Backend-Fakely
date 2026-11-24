@@ -103,6 +103,7 @@ def build_verification_service(
             acronyms=rules.acronyms,
             tagger=tagger,
             generic_terms=rules.generic_terms,
+            fact_verb_stems=rules.fact_verb_stems,
         ),
         evidence_service=EvidenceService(
             settings,

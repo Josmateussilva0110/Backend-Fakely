@@ -119,7 +119,7 @@ class VerificationService:
             return skipped(None, "insufficient_text")
         if not self.search_enabled:
             return skipped(claim, "verification_unavailable")
-        outcome = self.search_service.search(claim, title)
+        outcome = self.search_service.search(claim, title, reference_date=published_at)
         # Sem palavras-chave suficientes não há busca possível
         if outcome is None:
             return skipped(claim, "insufficient_text")

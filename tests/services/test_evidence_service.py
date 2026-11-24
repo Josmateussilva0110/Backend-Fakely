@@ -432,3 +432,32 @@ def test_shouting_text_falls_back_to_the_keywords(settings, verification_config,
     # Em maiúsculas toda palavra parecia nome: a manchete teria de repetir a frase inteira
     service = evidence_service_without_model(settings, verification_config, registry, rules)
     assert service.required_stems(["", "VACINAS CAUSAM AUTISMO"], ("vacinas", "autismo")) == {"vacin", "autis"}
+
+
+def test_model_alone_does_not_link_a_fact_check_about_another_subject(settings, verification_config, registry, rules):
+    # O modelo deu 0,80 para esta checagem contra "A notícia que parou o Brasil" e o fato verdadeiro virou falso
+    headline = "Notícia sobre fábricas da Coca-Cola fechadas não tem relação com unidades da empresa no Brasil"
+    claim = "A notícia que parou o Brasil nesta sexta"
+    rumor = with_model(settings, verification_config, registry, rules, {}).rumor(headline, "false")
+    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.8})
+    evidences = build_for(service, verification_config, claim, {
+        "boatos": [make_result(headline, "https://www.boatos.org/brasil/coca-cola.html")],
+    })
+    assert all(e.stance != "contradicts" for e in evidences)
+
+
+def test_fact_check_of_the_opposite_rumor_does_not_contradict(evidence_service, verification_config):
+    # O boato julgado falso é "não morreu": a checagem confirma a morte, não a desmente
+    claim = "A cantora Marília Mendonça morreu na queda do avião"
+    evidences = build_for(evidence_service, verification_config, claim, {
+        "boatos": [make_result("Marília Mendonça não morreu e está bem #boato", "https://www.boatos.org/x/marilia.html")],
+    })
+    assert all(e.stance != "contradicts" for e in evidences)
+
+
+def test_agency_denial_with_negation_still_contradicts(evidence_service, verification_config):
+    # O "não" é da agência ("cobrança é golpe"): o boato julgado é a taxação, a mesma afirmação
+    evidences = build_for(evidence_service, verification_config, "A Receita Federal está taxando o Pix", {
+        "lupa": [make_result("Receita Federal não está taxando o Pix; cobrança é golpe", "https://www.agencialupa.org/pix")],
+    })
+    assert evidences[0].stance == "contradicts"

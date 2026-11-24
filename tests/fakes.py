@@ -6,13 +6,16 @@ from app.services.verification_config_service import VerificationConfig
 
 
 class FakeSearchClient:
-    def __init__(self, results: list[SearchResult] | None = None, error: bool = False):
+    def __init__(self, results: list[SearchResult] | None = None, error: bool = False, supports_period: bool = True):
         self.results = results or []
         self.error = error
+        self.supports_period = supports_period
         self.queries: list[str] = []
+        self.periods: list[tuple[date, date] | None] = []
 
-    def search(self, query: str, limit: int) -> list[SearchResult]:
+    def search(self, query: str, limit: int, period: tuple[date, date] | None = None) -> list[SearchResult]:
         self.queries.append(query)
+        self.periods.append(period)
         if self.error:
             raise SearchError("site indisponível")
         return self.results[:limit]
@@ -28,7 +31,9 @@ class FakeSearchService:
         self.outcome = outcome
         self.calls = 0
 
-    def search(self, claim: str, title: str | None = None) -> SearchOutcome | None:
+    def search(
+        self, claim: str, title: str | None = None, reference_date: date | None = None
+    ) -> SearchOutcome | None:
         self.calls += 1
         return self.outcome
 

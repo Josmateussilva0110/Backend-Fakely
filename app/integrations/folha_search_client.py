@@ -5,7 +5,7 @@ from datetime import date
 
 from bs4 import BeautifulSoup
 
-from app.integrations.search_client import HttpFetcher, SearchResult, is_allowed_url
+from app.integrations.search_client import HttpFetcher, Period, SearchResult, is_allowed_url
 
 _MONTHS = {
     "jan": 1,
@@ -26,12 +26,15 @@ _DATE_PATTERN = re.compile(r"(\d{1,2})\.([a-z]{3})\.(\d{4})")
 
 
 class FolhaSearchClient:
+    # A página de busca não filtra por data
+    supports_period = False
+
     def __init__(self, fetcher: HttpFetcher, search_url: str, allowed_domains: tuple[str, ...]):
         self.fetcher = fetcher
         self.search_url = search_url
         self.allowed_domains = allowed_domains
 
-    def search(self, query: str, limit: int) -> list[SearchResult]:
+    def search(self, query: str, limit: int, period: Period | None = None) -> list[SearchResult]:
         html = self.fetcher.get_text(self.search_url, {"q": query}, self.allowed_domains)
         return parse_folha_results(html, self.allowed_domains, limit)
 

@@ -70,5 +70,8 @@
   "roundup_terms": [
     "o que já checamos", "o que checamos", "o que já desmentimos", "o que desmentimos",
     "checamos em tempo real", "checamos declarações", "checamos entrevistas", "checamos discursos"
+  ],
+  "rumor_markers": [
+    "é falso que", "falso:", "#falso", "não é verdade que", "é mentira que", "é fake que", "boato"
   ]
 }

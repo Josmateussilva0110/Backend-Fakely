@@ -41,7 +41,7 @@ from typing import Literal
 import httpx
 
 from app.core.config import get_settings
-from app.integrations.search_client import SearchClient, SearchError, SearchResult
+from app.integrations.search_client import Period, SearchClient, SearchError, SearchResult
 from app.main import build_verification_service, load_entailment_model
 from app.models.news_analysis_model import Classification, VerificationStatus
 from app.services.decision_service import DecisionService
@@ -135,8 +135,10 @@ class SearchStore:
         self.fetched = 0
 
     @staticmethod
-    def key(source: str, query: str, limit: int) -> str:
-        return f"{source}|{limit}|{query}"
+    def key(source: str, query: str, limit: int, period: Period | None = None) -> str:
+        # Sem período, a chave continua a mesma das buscas já gravadas
+        key = f"{source}|{limit}|{query}"
+        return f"{key}|{period[0].isoformat()}..{period[1].isoformat()}" if period else key
 
     def get(self, key: str) -> list[SearchResult] | None:
         with self.lock:
@@ -174,15 +176,16 @@ class RecordingSearchClient:
         self.source = source
         self.client = client
         self.store = store
+        self.supports_period = client.supports_period
 
-    def search(self, query: str, limit: int) -> list[SearchResult]:
-        key = SearchStore.key(self.source, query, limit)
+    def search(self, query: str, limit: int, period: Period | None = None) -> list[SearchResult]:
+        key = SearchStore.key(self.source, query, limit, period)
         results = self.store.get(key)
         if results is None:
             if self.store.mode == "offline":
                 raise SearchError(f"Sem resposta gravada para {self.source}: {query!r}")
             # Falhas não são gravadas, para tentar de novo na próxima execução
-            results = self.client.search(query, limit)
+            results = self.client.search(query, limit, period)
             self.store.put(key, results)
         self.store.count(results)
         return results
