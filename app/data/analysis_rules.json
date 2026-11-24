@@ -279,7 +279,7 @@
     "ano", "anos", "mês", "meses", "semana", "semanas", "dia", "dias", "hora", "horas", "minutos",
     "hoje", "ontem", "amanhã", "manhã", "tarde", "noite", "partir", "vezes", "parte", "forma"
   ],
-  "broad_names": ["Brasil", "País", "Mundo"],
+  "broad_names": ["Brasil", "País", "Mundo", "Deus"],
   "fact_verb_stems": [
     "conden", "morre", "morri", "falece", "eleit", "elege", "desist", "renunc", "prend", "preso",
     "vence", "perde", "assin", "sancion", "aprov", "proib", "cancel", "fecha", "taxar", "confisc",
