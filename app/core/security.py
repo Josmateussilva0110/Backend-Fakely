@@ -37,7 +37,9 @@ def require_admin_key(
 ) -> None:
     expected = settings.admin_api_key
     # compare_digest evita ataques de tempo na comparação
-    if expected is None or x_api_key is None or not secrets.compare_digest(
-        x_api_key.encode(), expected.get_secret_value().encode()
+    if (
+        expected is None
+        or x_api_key is None
+        or not secrets.compare_digest(x_api_key.encode(), expected.get_secret_value().encode())
     ):
         raise ForbiddenError("Acesso negado.")

@@ -267,12 +267,24 @@
     "entenda o que",
     "notícia triste"
   ],
+  "open_question_terms": [
+    "quem", "qual", "quais", "quanto", "quanta", "quantos", "quantas", "onde", "quando", "como",
+    "por que", "por quê", "porque", "o que", "em qual", "em que", "de quem", "para que", "pra que"
+  ],
+  "future_terms": ["vai", "vão", "irá", "irão", "vamos"],
   "generic_terms": [
     "domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado",
     "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
     "novembro", "dezembro",
     "ano", "anos", "mês", "meses", "semana", "semanas", "dia", "dias", "hora", "horas", "minutos",
     "hoje", "ontem", "amanhã", "manhã", "tarde", "noite", "partir", "vezes", "parte", "forma"
+  ],
+  "broad_names": ["Brasil", "País", "Mundo", "Deus"],
+  "fact_verb_stems": [
+    "conden", "morre", "morri", "falece", "eleit", "elege", "desist", "renunc", "prend", "preso",
+    "vence", "perde", "assin", "sancion", "aprov", "proib", "cancel", "fecha", "taxar", "confisc",
+    "desab", "rompe", "rompi", "invad", "demit", "suspen", "bloque", "anula", "derrub", "explod",
+    "sequestr", "assassin", "ataca", "atacou", "decret", "promulg", "elimin", "caiu", "liber"
   ],
   "style_thresholds": {
     "excess_exclamation_min": 3,

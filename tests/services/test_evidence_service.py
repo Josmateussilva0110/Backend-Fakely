@@ -4,7 +4,7 @@ import pytest
 
 from app.core.exceptions import ServiceUnavailableError
 from app.services.evidence_service import EvidenceService, to_hypothesis
-from tests.fakes import FakeEntailmentModel, make_outcome, make_result
+from tests.fakes import FakeEntailmentModel, FakeTagger, make_outcome, make_result
 
 CLAIM = "Ivermectina tem 70% de eficácia contra a Covid, diz estudo"
 
@@ -309,9 +309,206 @@ def test_busy_model_returns_service_unavailable(settings, verification_config, r
 
 def test_fact_check_with_extra_words_counts_when_model_matches(settings, verification_config, registry, rules):
     headline = "É falso que Tony Ramos morreu aos 89 anos em setembro de 2026 e morte foi anunciada na TV"
-    service = with_model(settings, verification_config, registry, rules, {headline: 0.61})
-    evidences = build_for(service, verification_config, "Tony Ramos morreu aos 89 anos", {
+    # O modelo compara o boato, sem o "É falso que", com a afirmação
+    rumor = "Tony Ramos morreu aos 89 anos em setembro de 2026 e morte foi anunciada na TV"
+    claim = "Tony Ramos morreu aos 89 anos"
+    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.61})
+    evidences = build_for(service, verification_config, claim, {
         "boatos": [make_result(headline, "https://www.boatos.org/entretenimento/tony-ramos.html")],
     })
     assert evidences[0].verdict == "false"
     assert evidences[0].stance == "contradicts"
+    # A nota veio do modelo, comparando o boato e não a manchete com o veredito
+    assert evidences[0].entailment == 0.61
+
+
+@pytest.mark.parametrize(
+    ("title", "rumor"),
+    [
+        ("É falso que as vacinas contra a Covid-19 vêm com aids", "as vacinas contra a Covid-19 vêm com aids"),
+        ("Silvio Santos morreu hoje aos 86 anos #boato", "Silvio Santos morreu hoje aos 86 anos"),
+        # Checagem escrita como negação: sem o "não" sobra o boato
+        ("Caminhões com doações ao RS não estão sendo retidos", "Caminhões com doações ao RS estão sendo retidos"),
+        # O "não" do próprio boato fica quando o veredito já foi retirado
+        ("É falso que a vacina não protege contra a gripe", "a vacina não protege contra a gripe"),
+    ],
+)
+def test_rumor_is_the_headline_without_the_verdict(evidence_service, title, rumor):
+    assert evidence_service.rumor(title, "false") == rumor
+
+
+def test_fact_check_about_other_fact_of_the_same_people_does_not_contradict(evidence_service, verification_config):
+    # Mesmos nomes, outro fato: antes os nomes bastavam e um fato verdadeiro virava "provavelmente falso"
+    evidences = build_for(evidence_service, verification_config, "STF condena Bolsonaro a 27 anos de prisão", {
+        "lupa": [make_result("Bolsonaro no STF é falso", "https://www.agencialupa.org/checagem/stf")],
+    })
+    assert evidences[0].verdict == "false"
+    assert evidences[0].stance == "neutral"
+
+
+def test_negated_fact_check_headline_is_matched_by_the_model(settings, verification_config, registry, rules):
+    headline = "Caminhões com doações ao Rio Grande do Sul não estão sendo retidos por falta de nota fiscal"
+    rumor = "Caminhões com doações ao Rio Grande do Sul estão sendo retidos por falta de nota fiscal"
+    claim = "Os caminhões com doação pro Rio Grande do Sul estão sendo parados sem nota fiscal"
+    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.9})
+    evidences = build_for(service, verification_config, claim, {
+        "lupa": [make_result(headline, "https://www.agencialupa.org/checagem/rs", excerpt="É falso que caminhões...")],
+    })
+    assert evidences[0].verdict == "false"
+    assert evidences[0].entailment == 0.9
+    assert evidences[0].stance == "contradicts"
+
+
+def test_rumor_that_only_presupposes_the_claim_does_not_contradict(settings, verification_config, registry, rules):
+    # A carta é o boato; a morte é verdadeira. O boato implica a morte, mas a morte não implica o boato
+    headline = "É falso que o papa Francisco enviou uma carta ao padre antes de morrer"
+    rumor = "o papa Francisco enviou uma carta ao padre antes de morrer"
+    claim = "O papa Francisco morreu"
+    service = with_model(settings, verification_config, registry, rules, {rumor: 0.99, (claim, rumor): 0.02})
+    evidences = build_for(service, verification_config, claim, {
+        "boatos": [make_result(headline, "https://www.boatos.org/religiao/papa-carta.html")],
+    })
+    assert all(evidence.stance != "contradicts" for evidence in evidences)
+
+
+def test_fact_check_with_other_age_is_another_fact(evidence_service, verification_config):
+    # Boato antigo da morte (86 anos) não desmente a morte real (93 anos): fato verdadeiro virava falso
+    evidences = build_for(evidence_service, verification_config, "Silvio Santos morre aos 93 anos em São Paulo", {
+        "boatos": [make_result("Silvio Santos morreu hoje aos 86 anos #boato", "https://www.boatos.org/silvio.html")],
+    })
+    assert all(evidence.stance != "contradicts" for evidence in evidences)
+
+
+def test_same_number_written_differently_still_contradicts(evidence_service, verification_config):
+    evidences = build_for(evidence_service, verification_config, "WhatsApp vai cobrar 0,37 centavos por mensagem", {
+        "boatos": [
+            make_result("WhatsApp vai cobrar 0.37 centavos por mensagem #boato", "https://www.boatos.org/zap.html")
+        ],
+    })
+    assert evidences[0].stance == "contradicts"
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "O que já checamos sobre a COP30 em Belém; confira",
+        "Metanol em bebidas alcoólicas: confira o que já checamos",
+        "Debate entre presidenciáveis na TV: checamos em tempo real",
+    ],
+)
+def test_roundup_page_has_no_verdict(evidence_service, verification_config, title):
+    # O resumo dessas páginas fala em "falso" sobre outras afirmações; a página em si não julga nada
+    lupa = verification_config.sources[0]
+    result = make_result(title, "https://www.agencialupa.org/x", excerpt="É falso que a COP30 foi cancelada")
+    assert evidence_service.detect_verdict(lupa, result, "fact_checker") is None
+
+
+def test_roundup_page_does_not_contradict_the_claim(evidence_service, verification_config):
+    evidences = build_for(evidence_service, verification_config, "A COP30 vai ser em Belém", {
+        "lupa": [make_result("O que já checamos sobre a COP30 em Belém; confira", "https://www.agencialupa.org/cop",
+                             excerpt="É falso que a COP30 foi transferida")],
+    })
+    assert all(evidence.stance != "contradicts" for evidence in evidences)
+
+
+IMA_CLAIM = "Depois que tomei a vacina da covid o ímã gruda no braço"
+IMA_HEADLINE = "Ímã gruda no braço de quem tomou vacina contra Covid-19 #boato"
+
+
+def test_sentence_start_is_not_a_required_name(settings, verification_config, registry, rules):
+    # Sem a classe gramatical, "Depois" (começo da frase) era exigido na manchete e a checagem nem ia ao modelo
+    service = EvidenceService(settings, verification_config, registry, rules.stopwords,
+                              entailment_model=FakeEntailmentModel({}), tagger=FakeTagger({"Depois": "ADV"}))
+    assert service.required_names([IMA_CLAIM, ""], ("vacina", "covid")).all == {"vacin", "covid"}
+
+
+def test_tagger_keeps_names_at_the_sentence_start(settings, verification_config, registry, rules):
+    tags = {"Neymar": "PROPN", "Real": "PROPN", "Madrid": "PROPN", "foi": "AUX", "pelo": "ADP"}
+    service = EvidenceService(settings, verification_config, registry, rules.stopwords, tagger=FakeTagger(tags))
+    assert service.required_names(["Neymar foi contratado pelo Real Madrid", ""], ()).all == {"neyma", "real", "madri"}
+
+
+def test_shouting_text_falls_back_to_the_keywords(settings, verification_config, registry, rules):
+    # Em maiúsculas toda palavra parecia nome: a manchete teria de repetir a frase inteira
+    service = evidence_service_without_model(settings, verification_config, registry, rules)
+    assert service.required_names(["VACINAS CAUSAM AUTISMO", ""], ("vacinas", "autismo")).all == {"vacin", "autis"}
+
+
+def test_model_alone_does_not_link_a_fact_check_about_another_subject(settings, verification_config, registry, rules):
+    # O modelo deu 0,80 para esta checagem contra "A notícia que parou o Brasil" e o fato verdadeiro virou falso
+    headline = "Notícia sobre fábricas da Coca-Cola fechadas não tem relação com unidades da empresa no Brasil"
+    claim = "A notícia que parou o Brasil nesta sexta"
+    rumor = with_model(settings, verification_config, registry, rules, {}).rumor(headline, "false")
+    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.8})
+    evidences = build_for(service, verification_config, claim, {
+        "boatos": [make_result(headline, "https://www.boatos.org/brasil/coca-cola.html")],
+    })
+    assert all(e.stance != "contradicts" for e in evidences)
+
+
+def test_fact_check_of_the_opposite_rumor_does_not_contradict(evidence_service, verification_config):
+    # O boato julgado falso é "não morreu": a checagem confirma a morte, não a desmente
+    claim = "A cantora Marília Mendonça morreu na queda do avião"
+    evidences = build_for(evidence_service, verification_config, claim, {
+        "boatos": [make_result("Marília Mendonça não morreu e está bem #boato", "https://www.boatos.org/x/marilia.html")],
+    })
+    assert all(e.stance != "contradicts" for e in evidences)
+
+
+def test_agency_denial_with_negation_still_contradicts(evidence_service, verification_config):
+    # O "não" é da agência ("cobrança é golpe"): o boato julgado é a taxação, a mesma afirmação
+    evidences = build_for(evidence_service, verification_config, "A Receita Federal está taxando o Pix", {
+        "lupa": [make_result("Receita Federal não está taxando o Pix; cobrança é golpe", "https://www.agencialupa.org/pix")],
+    })
+    assert evidences[0].stance == "contradicts"
+
+
+
+def test_subject_is_required_but_not_every_place(settings, verification_config, registry, rules):
+    # Exigir todos os nomes barrava a reportagem da queda em Vinhedo por não citar "Cascavel"
+    tags = {"Voepass": "PROPN", "Vinhedo": "PROPN", "Cascavel": "PROPN"}
+    service = EvidenceService(settings, verification_config, registry, rules.stopwords, tagger=FakeTagger(tags))
+    required = service.required_names(["Avião da Voepass que saiu de Cascavel cai em Vinhedo", ""], ())
+    assert required.subject == {"voepa"}
+    assert required.covered_by(service.stems("Avião da Voepass cai em Vinhedo"), 0.5)
+    # Sem o sujeito não basta: "Courtois renova com o Real Madrid" não fala de Neymar
+    assert not required.covered_by(service.stems("Avião cai entre Cascavel e Vinhedo"), 0.5)
+
+
+def test_fact_check_still_needs_every_name_to_contradict(settings, verification_config, registry, rules):
+    # O modelo deu 0,92 para esta checagem de outro fato; com a regra relaxada ela desmentia um fato verdadeiro
+    tags = {"OMS": "PROPN", "África": "PROPN", "Mpox": "PROPN"}
+    service = EvidenceService(settings, verification_config, registry, rules.stopwords, tagger=FakeTagger(tags))
+    required = service.required_names(["A OMS declarou emergência pela mpox por uma variante nova na África", ""], ())
+    headline = "É falso que OMS tenha decretado lockdown por causa de Mpox"
+    assert service.names_covered(required, headline, verdict=None)
+    assert not service.names_covered(required, headline, verdict="false")
+
+
+def fact_clause_service(settings, verification_config, registry, rules, tags):
+    return EvidenceService(settings, verification_config, registry, rules.stopwords, tagger=FakeTagger(tags))
+
+
+def test_fact_clause_drops_the_details_after_the_fact(settings, verification_config, registry, rules):
+    # Os detalhes que a manchete não traz derrubavam a nota do modelo (0,03 -> 0,85)
+    tags = {"Alemão": "PROPN", "Penha": "PROPN", "operação": "NOUN", "deixou": "VERB", "nos": "ADP"}
+    service = fact_clause_service(settings, verification_config, registry, rules, tags)
+    claim = "Uma operação policial nos complexos do Alemão e da Penha deixou mortos, na zona norte do Rio"
+    assert service.fact_clause(claim) == "Uma operação policial nos complexos do Alemão e da Penha deixou mortos"
+
+
+def test_fact_clause_keeps_the_apposition_and_decimal_numbers(settings, verification_config, registry, rules):
+    tags = {"Estados": "PROPN", "Unidos": "PROPN", "Donald": "PROPN", "Trump": "PROPN", "anunciou": "VERB",
+            "Guaíba": "PROPN", "atinge": "VERB"}
+    service = fact_clause_service(settings, verification_config, registry, rules, tags)
+    claim = "O presidente dos Estados Unidos, Donald Trump, anunciou uma tarifa, diz a Casa Branca"
+    assert service.fact_clause(claim) == "O presidente dos Estados Unidos, Donald Trump, anunciou uma tarifa"
+    assert service.fact_clause("Guaíba atinge 5,35 metros, diz órgão") == "Guaíba atinge 5,35 metros"
+
+
+def test_fact_clause_skips_openings_not_linked_to_the_fact(settings, verification_config, registry, rules):
+    # "Que notícia triste gente" tem verbo, mas nem nome nem palavra-chave: não é o fato
+    tags = {"é": "AUX", "Preta": "PROPN", "Gil": "PROPN", "morreu": "VERB"}
+    service = fact_clause_service(settings, verification_config, registry, rules, tags)
+    claim = "Que notícia triste é essa, a Preta Gil morreu nos Estados Unidos"
+    assert service.fact_clause(claim, ("preta", "morreu")) == claim

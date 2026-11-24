@@ -6,13 +6,16 @@ from app.services.verification_config_service import VerificationConfig
 
 
 class FakeSearchClient:
-    def __init__(self, results: list[SearchResult] | None = None, error: bool = False):
+    def __init__(self, results: list[SearchResult] | None = None, error: bool = False, supports_period: bool = True):
         self.results = results or []
         self.error = error
+        self.supports_period = supports_period
         self.queries: list[str] = []
+        self.periods: list[tuple[date, date] | None] = []
 
-    def search(self, query: str, limit: int) -> list[SearchResult]:
+    def search(self, query: str, limit: int, period: tuple[date, date] | None = None) -> list[SearchResult]:
         self.queries.append(query)
+        self.periods.append(period)
         if self.error:
             raise SearchError("site indisponível")
         return self.results[:limit]
@@ -21,25 +24,33 @@ class FakeSearchClient:
 class FakeSearchService:
     """Substitui o EvidenceSearchService devolvendo um resultado pronto."""
 
+    # Sem classe gramatical, como o serviço real com o modelo desligado
+    tagger = None
+
     def __init__(self, outcome: SearchOutcome | None):
         self.outcome = outcome
         self.calls = 0
 
-    def search(self, claim: str, title: str | None = None) -> SearchOutcome | None:
+    def search(
+        self, claim: str, title: str | None = None, reference_date: date | None = None
+    ) -> SearchOutcome | None:
         self.calls += 1
         return self.outcome
 
 
 class FakeEntailmentModel:
-    """Devolve a implicação definida para cada manchete (0 quando não definida)."""
+    """Devolve a implicação definida para cada manchete (0 quando não definida).
 
-    def __init__(self, scores: dict[str, float]):
+    A chave pode ser a premissa ou o par (premissa, hipótese), quando a hipótese também importa.
+    """
+
+    def __init__(self, scores: dict):
         self.scores = scores
         self.hypotheses: list[str] = []
 
     def entailment(self, premises: list[str], hypothesis: str) -> list[float]:
         self.hypotheses.append(hypothesis)
-        return [self.scores.get(premise, 0.0) for premise in premises]
+        return [self.scores.get((premise, hypothesis), self.scores.get(premise, 0.0)) for premise in premises]
 
 
 def make_result(

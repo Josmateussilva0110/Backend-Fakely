@@ -1,4 +1,5 @@
 import json
+from datetime import date
 
 import httpx
 import pytest
@@ -66,3 +67,14 @@ def test_invalid_json_raises_search_error():
     client = build_client(lambda request: httpx.Response(200, text="<html>erro</html>"))
     with pytest.raises(SearchError):
         client.search("x y", 5)
+
+
+def test_period_becomes_after_and_before():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["after"] == "2022-11-09T00:00:00"
+        assert request.url.params["before"] == "2023-01-08T23:59:59"
+        return httpx.Response(200, json=[])
+
+    client = build_client(handler)
+    assert client.supports_period
+    assert client.search("croacia brasil", 5, (date(2022, 11, 9), date(2023, 1, 8))) == []

@@ -10,8 +10,9 @@ from tests.services.test_content_extraction_service import PARAGRAPH, FakeWebPag
 
 URL = "/api/v1/news-analyses"
 TITLE = "Ivermectina tem 70% de eficácia contra a Covid, diz estudo"
-LUPA_FALSE = make_result("É falso que a ivermectina tenha 70% de eficácia contra a Covid",
-                         "https://www.agencialupa.org/checagem/x")
+LUPA_FALSE = make_result(
+    "É falso que a ivermectina tenha 70% de eficácia contra a Covid", "https://www.agencialupa.org/checagem/x"
+)
 
 
 @pytest.fixture
@@ -57,9 +58,14 @@ def test_create_returns_report_with_evidences(client, with_search):
     assert result["confidence"] == "medium" and result["confidence_label"] == "Média"
     assert "probability_fake" not in body and "probability" not in result
     assert body["claim"] == TITLE
+    assert body["intent"] == "claim"
+    assert body["intent_label"] == "Afirmação"
     assert body["verification"]["status"] == "complete"
     assert body["warnings"]["source_assessment"] == {
-        "domain": "blogqualquer.net", "recognized": False, "name": None, "category": None,
+        "domain": "blogqualquer.net",
+        "recognized": False,
+        "name": None,
+        "category": None,
     }
     assert body["evidences"]["supporting"] == []
     evidence = body["evidences"]["contradicting"][0]
@@ -85,8 +91,10 @@ def test_without_evidence_result_is_inconclusive(client, with_search):
 
 def test_only_decisive_links_are_returned_but_all_are_stored(client, with_search, db_session):
     # Sobre o assunto, mas não confirma nem contradiz: fica no banco, fora da resposta
-    related = make_result("Ivermectina volta a ser debatida em estudo sobre Covid",
-                          "https://www1.folha.uol.com.br/equilibrioesaude/ivermectina.shtml")
+    related = make_result(
+        "Ivermectina volta a ser debatida em estudo sobre Covid",
+        "https://www1.folha.uol.com.br/equilibrioesaude/ivermectina.shtml",
+    )
     with_search({"lupa": [LUPA_FALSE], "folha": [related]})
     body = client.post(URL, json={"text": NEUTRAL_TEXT, "title": TITLE}).json()
     returned = [e["url"] for group in body["evidences"].values() for e in group]
@@ -177,3 +185,14 @@ def test_get_missing_returns_404(client):
     response = client.get(f"{URL}/999")
     assert response.status_code == 404
     assert response.json()["detail"] == "Análise não encontrada."
+
+
+def test_open_question_is_explained_in_the_response(client, with_search):
+    search = with_search({"lupa": []})
+    body = client.post(URL, json={"text": "Quem ganhou a eleição para presidente em 2022?"}).json()
+    assert body["intent"] == "open_question"
+    assert body["intent_label"] == "Pergunta aberta"
+    assert body["claim"] is None
+    assert body["result"]["classification"] == "inconclusive"
+    assert "pergunta aberta" in body["result"]["justification"]
+    assert search.calls == 0

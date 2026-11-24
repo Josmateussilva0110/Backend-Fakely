@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.models.evidence_model import Evidence
-from app.models.news_analysis_model import Classification, Confidence, NewsAnalysis, VerificationStatus
+from app.models.news_analysis_model import Classification, Confidence, Intent, NewsAnalysis, VerificationStatus
 from app.services.evidence_service import EvidenceCategory
 from app.services.source_registry_service import SourceCategory
 from app.services.verification_config_service import Verdict
@@ -13,6 +13,15 @@ CLASSIFICATION_LABELS = {
     Classification.LIKELY_TRUE: "Possivelmente verdadeira",
     Classification.LIKELY_FALSE: "Possivelmente falsa",
     Classification.INCONCLUSIVE: "Inconclusiva",
+}
+
+INTENT_LABELS = {
+    Intent.CLAIM: "Afirmação",
+    Intent.YES_NO_QUESTION: "Pergunta sobre uma afirmação",
+    Intent.OPEN_QUESTION: "Pergunta aberta",
+    Intent.MULTIPLE_CLAIMS: "Várias afirmações",
+    Intent.PREDICTION: "Previsão",
+    Intent.OPINION: "Opinião",
 }
 
 CONFIDENCE_LABELS = {
@@ -119,6 +128,9 @@ class NewsAnalysisSummaryResponse(BaseModel):
     analyzed_at: datetime
     news: NewsReferenceResponse
     claim: str | None
+    # O que o usuário quer com o texto; vazio nas análises anteriores à detecção de intenção
+    intent: Intent | None
+    intent_label: str | None
     result: ResultSummaryResponse
 
     @model_validator(mode="before")
@@ -141,8 +153,9 @@ class NewsAnalysisResponse(NewsAnalysisSummaryResponse):
     def from_model(cls, data: Any) -> Any:
         if not isinstance(data, NewsAnalysis):
             return data
-        by_stance = {stance: [e for e in data.evidences if e.stance == stance]
-                     for stance in ("supports", "contradicts")}
+        by_stance = {
+            stance: [e for e in data.evidences if e.stance == stance] for stance in ("supports", "contradicts")
+        }
         return {
             **summary_fields(data),
             "result": {
@@ -172,7 +185,15 @@ class NewsAnalysisResponse(NewsAnalysisSummaryResponse):
 
 
 def summary_fields(analysis: NewsAnalysis) -> dict:
-    return {"id": analysis.id, "analyzed_at": analysis.analyzed_at, "news": analysis.news, "claim": analysis.claim}
+    intent = analysis.intent
+    return {
+        "id": analysis.id,
+        "analyzed_at": analysis.analyzed_at,
+        "news": analysis.news,
+        "claim": analysis.claim,
+        "intent": intent,
+        "intent_label": INTENT_LABELS[intent] if intent else None,
+    }
 
 
 def result_summary(analysis: NewsAnalysis) -> dict:

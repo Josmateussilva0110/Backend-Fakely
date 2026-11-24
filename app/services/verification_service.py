@@ -5,23 +5,30 @@ from datetime import UTC, date, datetime
 
 from app.core.cache import ThreadSafeTTLCache, build_cache_key
 from app.core.config import Settings
-from app.models.news_analysis_model import Classification, Confidence, VerificationStatus
+from app.models.news_analysis_model import Classification, Confidence, Intent, VerificationStatus
 from app.services.analysis_rules_service import AnalysisRules
 from app.services.claim_extraction_service import ClaimExtractionService
 from app.services.decision_service import Decision, DecisionReason, DecisionService
 from app.services.evidence_search_service import EvidenceSearchService, SearchOutcome
 from app.services.evidence_service import EvidenceItem, EvidenceService
+from app.services.intent_service import IntentService
 from app.services.report_service import ReportService
 from app.services.source_registry_service import SourceAssessment, SourceRegistry
 from app.services.text_processing_service import describe_style_signals, extract_features
 
 METHOD_EVIDENCE_RULES = "evidence_rules"
 VERIFICATION_DISABLED_NOTICE = "A busca de evidências está desativada neste ambiente."
+MULTIPLE_CLAIMS_NOTICE = (
+    "O texto parece trazer mais de uma afirmação; só a principal foi verificada. "
+    "Para conferir as outras, envie cada uma separadamente."
+)
+PREDICTION_NOTICE = "O texto fala de algo que ainda aconteceria. Se for uma previsão, só poderá ser verificada depois."
 
 
 @dataclass(frozen=True)
 class VerificationReport:
     claim: str | None
+    intent: Intent
     classification: Classification
     confidence: Confidence
     justification: str
@@ -52,6 +59,9 @@ class VerificationService:
         self.search_service = search_service
         self.evidence_service = evidence_service
         self.claim_service = ClaimExtractionService(rules, settings.min_words, settings.claim_max_length)
+        # A classe gramatical da busca ajuda a separar várias afirmações na mesma frase
+        tagger = search_service.tagger if search_service is not None else None
+        self.intent_service = IntentService(rules, self.claim_service, tagger)
         self.decision_service = DecisionService(settings)
         self.report_service = ReportService(settings)
         # Mesmo conteúdo gera a mesma análise; evita repetir buscas externas
@@ -92,23 +102,33 @@ class VerificationService:
         style_indicators = self.detect_style(text, title)
         assessment = self.registry.assess(url, source)
 
+        detected = self.intent_service.detect(text, self.claim_service.extract(text, title))
+        intent, claim = detected.intent, detected.claim
+
         def skipped(claim: str | None, reason: DecisionReason) -> VerificationReport:
             decision = Decision(Classification.INCONCLUSIVE, reason)
-            return self._build(claim, decision, [], None, style_indicators, assessment, VerificationStatus.SKIPPED)
+            return self._build(
+                claim, intent, decision, [], None, style_indicators, assessment, VerificationStatus.SKIPPED
+            )
 
-        claim = self.claim_service.extract(text, title)
+        if intent == Intent.OPINION:
+            return skipped(None, "opinion")
+        if intent == Intent.OPEN_QUESTION:
+            return skipped(None, "open_question")
         if claim is None:
-            return skipped(None, "opinion" if self.claim_service.is_opinion(text) else "insufficient_text")
+            return skipped(None, "insufficient_text")
         if not self.search_enabled:
             return skipped(claim, "verification_unavailable")
-        outcome = self.search_service.search(claim, title)
+        outcome = self.search_service.search(claim, title, reference_date=published_at)
         # Sem palavras-chave suficientes não há busca possível
         if outcome is None:
             return skipped(claim, "insufficient_text")
 
         evidences = self.evidence_service.build_evidences(outcome, claim, title, reference_date=published_at)
         decision = self.decision_service.decide(evidences, outcome.sources_checked)
-        return self._build(claim, decision, evidences, outcome, style_indicators, assessment, search_status(outcome))
+        intent = settle_prediction(intent, decision)
+        status = search_status(outcome)
+        return self._build(claim, intent, decision, evidences, outcome, style_indicators, assessment, status)
 
     def detect_style(self, text: str, title: str | None) -> list[str]:
         """Sinais de estilo: alertas exibidos ao usuário, sem peso na decisão."""
@@ -118,6 +138,7 @@ class VerificationService:
     def _build(
         self,
         claim: str | None,
+        intent: Intent,
         decision: Decision,
         evidences: list[EvidenceItem],
         outcome: SearchOutcome | None,
@@ -127,14 +148,17 @@ class VerificationService:
     ) -> VerificationReport:
         checked = outcome.sources_checked if outcome else ()
         failed = outcome.sources_failed if outcome else ()
-        report = self.report_service.build(
-            decision, evidences, checked, failed, assessment, datetime.now(UTC).date()
-        )
+        report = self.report_service.build(decision, evidences, checked, failed, assessment, datetime.now(UTC).date())
         limitations = list(report.limitations)
         if not self.search_enabled:
             limitations.insert(0, VERIFICATION_DISABLED_NOTICE)
+        if intent == Intent.MULTIPLE_CLAIMS:
+            limitations.insert(0, MULTIPLE_CLAIMS_NOTICE)
+        if intent == Intent.PREDICTION:
+            limitations.insert(0, PREDICTION_NOTICE)
         return VerificationReport(
             claim=claim,
+            intent=intent,
             classification=decision.classification,
             confidence=self.decision_service.confidence(decision, status),
             justification=report.justification,
@@ -149,6 +173,17 @@ class VerificationService:
             method=METHOD_EVIDENCE_RULES,
             model_version=self.settings.analysis_version,
         )
+
+
+def settle_prediction(intent: Intent, decision: Decision) -> Intent:
+    """Texto no futuro só é tratado como previsão se nada decidir.
+
+    "O governo vai taxar o Pix" parece previsão, mas é boato que as agências desmentiram: com
+    veredito, vale o resultado e o texto conta como afirmação.
+    """
+    if intent == Intent.PREDICTION and decision.classification != Classification.INCONCLUSIVE:
+        return Intent.CLAIM
+    return intent
 
 
 def search_status(outcome: SearchOutcome) -> VerificationStatus:

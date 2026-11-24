@@ -48,6 +48,9 @@ class ClaimExtractionService:
             claim = None
         return claim[: self.max_length] if claim else None
 
+    def is_long_enough(self, sentence: str) -> bool:
+        return self._word_count(sentence) >= self.min_words
+
     def is_opinion(self, text: str) -> bool:
         """Todas as frases com tamanho suficiente expressam opinião, sem fato verificável."""
         sentences = [s for s in self.split_sentences(text) if self._word_count(s) >= self.min_words]
@@ -91,8 +94,7 @@ class ClaimExtractionService:
 
     def _candidate_sentences(self, text: str) -> list[str]:
         return [
-            s for s in self.split_sentences(text)
-            if self._word_count(s) >= self.min_words and not self._is_opinion(s)
+            s for s in self.split_sentences(text) if self._word_count(s) >= self.min_words and not self._is_opinion(s)
         ]
 
     def _strip_openings(self, sentence: str) -> str:
@@ -101,7 +103,7 @@ class ClaimExtractionService:
             cut = self._label_length(sentence) or self._prefix_length(words)
             if not cut or cut >= len(words):
                 return sentence
-            sentence = sentence[words[cut - 1].end():].lstrip(_LEADING_PUNCTUATION)
+            sentence = sentence[words[cut - 1].end() :].lstrip(_LEADING_PUNCTUATION)
 
     def _prefix_length(self, words: list[re.Match[str]]) -> int:
         tokens = tuple(normalize_text(word.group()) for word in words)
@@ -115,13 +117,22 @@ class ClaimExtractionService:
         return len(label_words) if find_terms(normalize_text(head), self.label_terms) else 0
 
     def _specific_words(self, text: str) -> int:
-        """Siglas e nomes próprios; num texto todo em maiúsculas a caixa não indica nome próprio."""
+        """Siglas e nomes próprios; num texto todo em maiúsculas a caixa não indica nome próprio.
+
+        Nomes amplos ("Brasil") e datas com maiúscula ("Sexta") não contam: não dizem de que fato se trata.
+        Letra maiúscula sozinha no meio da frase é nome ("o X foi suspenso"), não sigla.
+        """
         words = WORD_PATTERN.findall(text)
         shouting = is_shouting(text)
         acronyms = sum(1 for word in words if is_acronym(word, self.rules.acronyms, shouting))
         if shouting:
             return acronyms
-        proper_nouns = sum(1 for word in words[1:] if word[0].isupper() and not word.isupper())
+        ignored = self.rules.broad_names | self.rules.generic_terms
+        proper_nouns = sum(
+            1
+            for word in words[1:]
+            if word[0].isupper() and (len(word) == 1 or not word.isupper()) and normalize_text(word) not in ignored
+        )
         return acronyms + proper_nouns
 
     def _is_opinion(self, text: str) -> bool:
@@ -129,7 +140,8 @@ class ClaimExtractionService:
 
     def _content_words(self, text: str) -> int:
         return sum(
-            1 for token in tokenize(normalize_text(text))
+            1
+            for token in tokenize(normalize_text(text))
             if token not in self.rules.stopwords
             and (len(token) >= MIN_CONTENT_WORD_LENGTH or token in self.rules.acronyms)
         )

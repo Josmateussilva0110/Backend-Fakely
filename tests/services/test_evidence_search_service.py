@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from app.services.evidence_search_service import EvidenceSearchService, SearchProvider
 from tests.fakes import FakeSearchClient, FakeTagger, make_result
 
@@ -8,6 +10,16 @@ USER_CLAIM = "Um estudo divulgado nas redes afirma que a ivermectina tem 70% de 
 def build_service(settings, config, rules, clients: dict) -> EvidenceSearchService:
     providers = [SearchProvider(source, clients[source.key]) for source in config.sources if source.key in clients]
     return EvidenceSearchService(settings, rules.stopwords, providers)
+
+
+def without_extra_query(settings):
+    # A consulta extra soma uma busca por site; estes testes contam só as da nova tentativa
+    return settings.model_copy(update={"verification_extra_query_keywords": 0})
+
+
+def with_extra_query(settings):
+    # Desligada por padrão; os testes dela a ligam com 3 palavras
+    return settings.model_copy(update={"verification_extra_query_keywords": 3})
 
 
 def test_config_lists_search_providers(verification_config):
@@ -89,11 +101,28 @@ def test_extract_keywords_ignores_generic_terms(settings, rules):
     assert keywords == ["mina", "maceio", "apos", "rompeu"]
 
 
-def test_extract_keywords_skips_tagger_in_shouting_text(settings, rules):
-    tagger = FakeTagger({})
-    service = EvidenceSearchService(settings, rules.stopwords, [], acronyms=rules.acronyms, tagger=tagger)
-    assert service.extract_keywords("URGENTE: STF CONDENA BOLSONARO A 27 ANOS DE PRISÃO")[0] == "stf"
-    assert tagger.calls == 0
+def test_extract_keywords_tags_shouting_text_in_lowercase(settings, rules):
+    # Em maiúsculas o modelo erra a classe ("TRUMP ANUNCIA" vira organização): ele recebe o texto em minúsculas
+    tagger = FakeTagger({"urgente": "ADJ", "condena": "VERB"})
+    service = EvidenceSearchService(settings, rules.stopwords, [], acronyms=rules.acronyms, tagger=tagger,
+                                    generic_terms=rules.generic_terms, fact_verb_stems=rules.fact_verb_stems)
+    keywords = service.extract_keywords("URGENTE STF CONDENA BOLSONARO A 27 ANOS DE PRISÃO")
+    assert keywords == ["stf", "condena", "bolsonaro", "prisao"]
+
+
+def test_fact_verb_competes_with_nouns_by_position(settings, rules):
+    # "condena" diz o fato; "prisao" e "trama" aparecem em qualquer notícia do julgamento
+    tagger = FakeTagger({"STF": "PROPN", "Bolsonaro": "PROPN", "condena": "VERB", "por": "ADP"})
+    service = EvidenceSearchService(settings, rules.stopwords, [], acronyms=rules.acronyms, tagger=tagger,
+                                    fact_verb_stems=rules.fact_verb_stems)
+    keywords = service.extract_keywords("STF condena Bolsonaro por trama golpista e prisão")
+    assert keywords == ["stf", "condena", "bolsonaro", "trama"]
+
+
+def test_other_verbs_stay_behind_the_nouns(settings, rules):
+    tagger = FakeTagger({"Donald": "PROPN", "anunciou": "VERB", "sobre": "ADP"})
+    service = EvidenceSearchService(settings, rules.stopwords, [], tagger=tagger, fact_verb_stems=rules.fact_verb_stems)
+    assert service.extract_keywords("Donald anunciou tarifas sobre produtos importados")[-1] != "anunciou"
 
 
 def test_extract_keywords_skips_dates_and_scores(settings, rules):
@@ -122,7 +151,8 @@ def test_failed_source_is_reported_without_breaking(settings, verification_confi
 
 def test_retries_with_fewer_keywords_when_empty(settings, verification_config, rules):
     lupa = FakeSearchClient([])
-    build_service(settings, verification_config, rules, {"lupa": lupa}).search(USER_CLAIM, USER_TITLE)
+    service = build_service(without_extra_query(settings), verification_config, rules, {"lupa": lupa})
+    service.search(USER_CLAIM, USER_TITLE)
     assert len(lupa.queries) == 2
     assert len(lupa.queries[1].split()) == settings.verification_min_keywords
 
@@ -136,15 +166,62 @@ def test_text_without_keywords_skips_search(settings, verification_config, rules
 def test_retries_with_specific_keywords_when_results_are_off_topic(settings, verification_config, rules):
     folha = FakeSearchClient([make_result("Sob chuva, ato contra Temer em Curitiba reúne 250 pessoas",
                                           "https://www1.folha.uol.com.br/poder/ato.shtml")])
-    outcome = build_service(settings, verification_config, rules, {"folha": folha}).search(USER_CLAIM, USER_TITLE)
+    service = build_service(without_extra_query(settings), verification_config, rules, {"folha": folha})
+    outcome = service.search(USER_CLAIM, USER_TITLE)
     assert len(folha.queries) == 2
     # A página repetida na segunda busca não é duplicada
     assert len(outcome.results[0].results) == 1
 
 
 def test_does_not_retry_when_results_mention_specific_keywords(settings, verification_config, rules):
-    service = build_service(settings, verification_config, rules, {})
+    service = build_service(without_extra_query(settings), verification_config, rules, {})
     specific = service.extract_keywords(USER_CLAIM, USER_TITLE)[: settings.verification_min_keywords]
     folha = FakeSearchClient([make_result(" ".join(specific).title(), "https://www1.folha.uol.com.br/a.shtml")])
-    build_service(settings, verification_config, rules, {"folha": folha}).search(USER_CLAIM, USER_TITLE)
+    service = build_service(without_extra_query(settings), verification_config, rules, {"folha": folha})
+    service.search(USER_CLAIM, USER_TITLE)
     assert len(folha.queries) == 1
+
+
+def test_news_date_adds_a_search_within_the_publication_window(settings, verification_config, rules):
+    # A eliminação de 2022 ficava enterrada por matérias de 2026 com os mesmos nomes
+    old = make_result("Brasil é eliminado pela Croácia nos pênaltis", "https://www.cnnbrasil.com.br/croacia")
+    cnn = FakeSearchClient([old])
+    folha = FakeSearchClient([], supports_period=False)
+    service = build_service(settings, verification_config, rules, {"cnn_brasil": cnn, "folha": folha})
+    service.search("Brasil perde para a Croácia nos pênaltis", reference_date=date(2022, 12, 9))
+    window = timedelta(days=settings.evidence_support_window_days)
+    # A busca sem data continua: checagens de boatos antigos são de anos antes
+    assert cnn.periods[0] is None
+    assert (date(2022, 12, 9) - window, date(2022, 12, 9) + window) in cnn.periods
+    assert all(period is None for period in folha.periods)
+
+
+def test_no_news_date_searches_without_period(settings, verification_config, rules):
+    cnn = FakeSearchClient([])
+    service = build_service(settings, verification_config, rules, {"cnn_brasil": cnn})
+    service.search("Brasil perde para a Croácia nos pênaltis")
+    assert all(period is None for period in cnn.periods)
+
+
+def test_extra_query_uses_the_words_that_did_not_fit(settings, verification_config, rules):
+    service = build_service(with_extra_query(settings), verification_config, rules, {})
+    keywords = service.extract_keywords(USER_CLAIM, USER_TITLE)
+    extra = service.extra_query(USER_CLAIM, USER_TITLE, keywords)
+    assert extra[0] == keywords[0]
+    assert not set(extra[1:]) & set(keywords)
+    assert 2 <= len(extra) - 1 <= 3
+
+
+def test_extra_query_is_skipped_when_almost_nothing_is_left(settings, verification_config, rules):
+    service = build_service(with_extra_query(settings), verification_config, rules, {})
+    claim = "Ivermectina cura covid rapidamente hoje"
+    assert service.extra_query(claim, None, service.extract_keywords(claim)) is None
+
+
+def test_extra_query_results_are_merged_without_duplicates(settings, verification_config, rules):
+    page = make_result("Ivermectina não tem eficácia contra a Covid", "https://agencialupa.org/x")
+    lupa = FakeSearchClient([page])
+    service = build_service(with_extra_query(settings), verification_config, rules, {"lupa": lupa})
+    outcome = service.search(USER_CLAIM, USER_TITLE)
+    assert len(lupa.queries) >= 2
+    assert len(outcome.results[0].results) == 1

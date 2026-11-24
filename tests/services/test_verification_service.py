@@ -1,16 +1,18 @@
 from datetime import date
 
-from app.models.news_analysis_model import Classification, VerificationStatus
+from app.models.news_analysis_model import Classification, Intent, VerificationStatus
 from app.services.verification_service import VERIFICATION_DISABLED_NOTICE
 from tests.conftest import NEUTRAL_TEXT, SENSATIONAL_TEXT
 from tests.fakes import FakeSearchService, make_outcome, make_result
 
 TITLE = "Ivermectina tem 70% de eficácia contra a Covid, diz estudo"
 TEXT = "Um estudo mostra que a ivermectina tem 70% de eficácia contra a Covid. Compartilhe com todos!"
-LUPA_FALSE = make_result("É falso que a ivermectina tenha 70% de eficácia contra a Covid",
-                         "https://www.agencialupa.org/checagem/x")
-FOLHA_MATCH = make_result("Ivermectina tem 70% de eficácia contra Covid, diz estudo",
-                          "https://www1.folha.uol.com.br/x.shtml")
+LUPA_FALSE = make_result(
+    "É falso que a ivermectina tenha 70% de eficácia contra a Covid", "https://www.agencialupa.org/checagem/x"
+)
+FOLHA_MATCH = make_result(
+    "Ivermectina tem 70% de eficácia contra Covid, diz estudo", "https://www1.folha.uol.com.br/x.shtml"
+)
 
 
 def test_sensational_text_without_evidence_is_inconclusive(make_verification_service, verification_config):
@@ -77,9 +79,9 @@ def test_partial_failure_is_reported(make_verification_service, verification_con
 
 def test_outdated_evidence_is_flagged(make_verification_service, verification_config):
     old = make_result(LUPA_FALSE.title, LUPA_FALSE.url, published_at=date(2015, 1, 1))
-    report = make_verification_service(
-        FakeSearchService(make_outcome(verification_config, {"lupa": [old]}))
-    ).verify(TEXT, title=TITLE)
+    report = make_verification_service(FakeSearchService(make_outcome(verification_config, {"lupa": [old]}))).verify(
+        TEXT, title=TITLE
+    )
     assert any("desatualizadas" in item for item in report.limitations)
 
 
@@ -116,3 +118,33 @@ def test_result_is_cached_and_refresh_bypasses_cache(make_verification_service, 
     service.verify(TEXT, title=TITLE, refresh=True)
     assert search.calls == 2
 
+
+def test_open_question_is_answered_without_search(make_verification_service, verification_config):
+    search = FakeSearchService(make_outcome(verification_config, {"lupa": [LUPA_FALSE]}))
+    report = make_verification_service(search).verify("Quem ganhou a eleição para presidente em 2022?")
+    assert report.intent == Intent.OPEN_QUESTION
+    assert report.classification == Classification.INCONCLUSIVE
+    assert report.claim is None
+    assert "pergunta aberta" in report.justification
+    assert search.calls == 0
+
+
+def test_prediction_without_evidence_explains_why(make_verification_service, verification_config):
+    service = make_verification_service(FakeSearchService(make_outcome(verification_config, {"lupa": []})))
+    report = service.verify("O dólar vai passar de 10 reais até o fim do ano, guardem o dinheiro em casa.")
+    assert report.intent == Intent.PREDICTION
+    assert report.classification == Classification.INCONCLUSIVE
+    assert any("previsão" in limitation for limitation in report.limitations)
+    # A explicação de sempre continua: ausência de evidência não é falsidade
+    assert "não indica que a afirmação seja falsa" in report.justification
+
+
+def test_future_rumor_debunked_by_fact_checker_is_a_claim(make_verification_service, verification_config):
+    debunk = make_result(
+        "É falso que a ivermectina vai ter 70% de eficácia contra a Covid", "https://www.agencialupa.org/c"
+    )
+    service = make_verification_service(FakeSearchService(make_outcome(verification_config, {"lupa": [debunk]})))
+    report = service.verify("Atenção: a ivermectina vai ter 70% de eficácia contra a Covid, diz estudo.")
+    assert report.classification == Classification.LIKELY_FALSE
+    assert report.intent == Intent.CLAIM
+    assert not any("previsão" in limitation for limitation in report.limitations)
