@@ -51,7 +51,7 @@ def test_same_page_from_two_providers_is_deduplicated(evidence_service, verifica
     evidences = build(evidence_service, verification_config, {
         "lupa": [make_result("É falso que ivermectina tem 70% de eficácia contra Covid",
                              "https://www.agencialupa.org/checagem/x")],
-        "cnn_brasil": [make_result("Ivermectina tem 70% de eficácia contra a Covid",
+        "veja": [make_result("Ivermectina tem 70% de eficácia contra a Covid",
                                    "https://agencialupa.org/checagem/x/")],
     })
     assert len(evidences) == 1
@@ -61,7 +61,7 @@ def test_same_organization_and_republications_are_not_independent(evidence_servi
     evidences = build(evidence_service, verification_config, {"folha": [
         make_result("Ivermectina tem 70% de eficácia contra Covid, diz estudo", "https://www1.folha.uol.com.br/a"),
         make_result("Ivermectina tem 70% de eficácia contra Covid, diz estudo", "https://www1.folha.uol.com.br/b"),
-    ], "cnn_brasil": [
+    ], "veja": [
         # Republicação do mesmo texto em outro veículo
         make_result("Ivermectina tem 70% de eficácia contra Covid, diz estudo", "https://g1.globo.com/c"),
     ]})
@@ -70,7 +70,7 @@ def test_same_organization_and_republications_are_not_independent(evidence_servi
 
 
 def test_unregistered_domain_is_unknown(evidence_service, verification_config):
-    evidences = build(evidence_service, verification_config, {"cnn_brasil": [
+    evidences = build(evidence_service, verification_config, {"veja": [
         make_result("Ivermectina tem 70% de eficácia contra a Covid", "https://blog-desconhecido.net/x",
                     published_at=date(2020, 1, 1)),
     ]})
@@ -180,7 +180,7 @@ def test_model_needs_the_claim_proper_nouns_in_the_headline(settings, verificati
     headline = "Courtois renova com o Real Madrid e fica até 2027, diz jornal"
     service = with_model(settings, verification_config, registry, rules, {headline: 0.92})
     evidences = build_for(service, verification_config, "Neymar foi contratado pelo Real Madrid", {
-        "cnn_brasil": [make_result(headline, "https://www.cnnbrasil.com.br/esportes/courtois")],
+        "veja": [make_result(headline, "https://veja.abril.com.br/esportes/courtois")],
     })
     assert all(e.stance != "supports" for e in evidences)
     assert all(e.entailment is None for e in evidences)
@@ -203,7 +203,7 @@ def test_identical_headline_supports_even_when_model_disagrees(settings, verific
     headline = "Vini Jr faz hat-trick e Brasil encerra 2026 com 7 a 0 sobre Singapura"
     service = with_model(settings, verification_config, registry, rules, {headline: 0.48})
     evidences = build_for(service, verification_config, headline, {
-        "cnn_brasil": [make_result(headline, "https://www.cnnbrasil.com.br/esportes/vini-singapura")],
+        "veja": [make_result(headline, "https://veja.abril.com.br/esportes/vini-singapura")],
     })
     assert evidences[0].stance == "supports"
 
@@ -235,7 +235,7 @@ def test_model_reads_the_excerpt_along_with_the_headline(settings, verification_
     # A frase do resumo vai separada da manchete; vale a maior nota
     service = with_model(settings, verification_config, registry, rules, {headline: 0.1, excerpt: 0.99})
     evidences = build_for(service, verification_config, "Flamengo empata com Estudiantes pela libertadores", {
-        "cnn_brasil": [make_result(headline, "https://www.cnnbrasil.com.br/esportes/paqueta", excerpt=excerpt)],
+        "veja": [make_result(headline, "https://veja.abril.com.br/esportes/paqueta", excerpt=excerpt)],
     })
     assert evidences[0].stance == "supports"
 
@@ -312,7 +312,8 @@ def test_fact_check_with_extra_words_counts_when_model_matches(settings, verific
     # O modelo compara o boato, sem o "É falso que", com a afirmação
     rumor = "Tony Ramos morreu aos 89 anos em setembro de 2026 e morte foi anunciada na TV"
     claim = "Tony Ramos morreu aos 89 anos"
-    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.61})
+    # Boato e afirmação dizem o mesmo: a implicação vale nos dois sentidos
+    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.61, (rumor, claim): 0.8})
     evidences = build_for(service, verification_config, claim, {
         "boatos": [make_result(headline, "https://www.boatos.org/entretenimento/tony-ramos.html")],
     })
@@ -350,7 +351,7 @@ def test_negated_fact_check_headline_is_matched_by_the_model(settings, verificat
     headline = "Caminhões com doações ao Rio Grande do Sul não estão sendo retidos por falta de nota fiscal"
     rumor = "Caminhões com doações ao Rio Grande do Sul estão sendo retidos por falta de nota fiscal"
     claim = "Os caminhões com doação pro Rio Grande do Sul estão sendo parados sem nota fiscal"
-    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.9})
+    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.9, (rumor, claim): 0.95})
     evidences = build_for(service, verification_config, claim, {
         "lupa": [make_result(headline, "https://www.agencialupa.org/checagem/rs", excerpt="É falso que caminhões...")],
     })
@@ -512,3 +513,39 @@ def test_fact_clause_skips_openings_not_linked_to_the_fact(settings, verificatio
     service = fact_clause_service(settings, verification_config, registry, rules, tags)
     claim = "Que notícia triste é essa, a Preta Gil morreu nos Estados Unidos"
     assert service.fact_clause(claim, ("preta", "morreu")) == claim
+
+
+
+def test_fact_check_of_a_different_rumor_needs_entailment_both_ways(settings, verification_config, registry, rules):
+    # O modelo viu 0,92 da emergência para o lockdown; o lockdown não implica a emergência
+    headline = "É falso que OMS tenha decretado lockdown por causa de Mpox"
+    claim = "A OMS declarou emergência mundial por causa da mpox"
+    rumor = with_model(settings, verification_config, registry, rules, {}).rumor(headline, "false")
+    service = with_model(settings, verification_config, registry, rules, {(claim, rumor): 0.92, (rumor, claim): 0.1})
+    evidences = build_for(service, verification_config, claim, {
+        "boatos": [make_result(headline, "https://www.boatos.org/saude/mpox.html")],
+    })
+    assert all(e.stance != "contradicts" for e in evidences)
+
+
+def test_word_overlap_alone_does_not_skip_the_names_rule(settings, verification_config, registry, rules):
+    # Sem os nomes o modelo nem compara, e 0,71 de semelhança desmentia o ouro de Beatriz Souza
+    tags = {"Beatriz": "PROPN", "Souza": "PROPN", "Brasil": "PROPN", "Paris": "PROPN", "Bolsonaro": "PROPN"}
+    service = EvidenceService(settings, verification_config, registry, rules.stopwords,
+                              entailment_model=FakeEntailmentModel({}), tagger=FakeTagger(tags))
+    claim = "Beatriz Souza ganhou a medalha de ouro no judô, primeiro ouro do Brasil em Paris"
+    evidences = build_for(service, verification_config, claim, {
+        "lupa": [make_result("É falso que Beatriz Souza dedicou medalha de ouro no judô a Bolsonaro",
+                             "https://www.agencialupa.org/checagem/beatriz")],
+    })
+    assert all(e.stance != "contradicts" for e in evidences)
+
+
+def test_question_headline_does_not_support(settings, verification_config, registry, rules):
+    # A pergunta não afirma; o modelo deu 0,64 e o boato da taxação do Pix virou verdadeiro
+    headline = "Como a Receita vai monitorar o Pix acima de R$ 5 mil? Entenda as mudanças"
+    service = with_model(settings, verification_config, registry, rules, {headline: 0.64})
+    evidences = build_for(service, verification_config, "A Receita Federal vai cobrar imposto do Pix acima de 5 mil", {
+        "veja": [make_result(headline, "https://veja.abril.com.br/economia/pix")],
+    })
+    assert all(e.stance != "supports" for e in evidences)

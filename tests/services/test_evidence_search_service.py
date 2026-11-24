@@ -22,9 +22,10 @@ def with_extra_query(settings):
     return settings.model_copy(update={"verification_extra_query_keywords": 3})
 
 
-def test_config_lists_search_providers(verification_config):
-    keys = [s.key for s in verification_config.sources]
-    assert keys == ["lupa", "folha", "cnn_brasil", "veja", "exame", "boatos"]
+def test_config_lists_search_providers(production_verification_config):
+    # Só sites cujos robots.txt e termos de uso permitem a busca por programas (veja o README)
+    keys = [s.key for s in production_verification_config.sources]
+    assert keys == ["folha", "veja", "boatos"]
 
 
 def test_extract_keywords_prefers_specific_words(settings, verification_config, rules):
@@ -184,23 +185,23 @@ def test_does_not_retry_when_results_mention_specific_keywords(settings, verific
 
 def test_news_date_adds_a_search_within_the_publication_window(settings, verification_config, rules):
     # A eliminação de 2022 ficava enterrada por matérias de 2026 com os mesmos nomes
-    old = make_result("Brasil é eliminado pela Croácia nos pênaltis", "https://www.cnnbrasil.com.br/croacia")
-    cnn = FakeSearchClient([old])
+    old = make_result("Brasil é eliminado pela Croácia nos pênaltis", "https://veja.abril.com.br/croacia")
+    veja = FakeSearchClient([old])
     folha = FakeSearchClient([], supports_period=False)
-    service = build_service(settings, verification_config, rules, {"cnn_brasil": cnn, "folha": folha})
+    service = build_service(settings, verification_config, rules, {"veja": veja, "folha": folha})
     service.search("Brasil perde para a Croácia nos pênaltis", reference_date=date(2022, 12, 9))
     window = timedelta(days=settings.evidence_support_window_days)
     # A busca sem data continua: checagens de boatos antigos são de anos antes
-    assert cnn.periods[0] is None
-    assert (date(2022, 12, 9) - window, date(2022, 12, 9) + window) in cnn.periods
+    assert veja.periods[0] is None
+    assert (date(2022, 12, 9) - window, date(2022, 12, 9) + window) in veja.periods
     assert all(period is None for period in folha.periods)
 
 
 def test_no_news_date_searches_without_period(settings, verification_config, rules):
-    cnn = FakeSearchClient([])
-    service = build_service(settings, verification_config, rules, {"cnn_brasil": cnn})
+    veja = FakeSearchClient([])
+    service = build_service(settings, verification_config, rules, {"veja": veja})
     service.search("Brasil perde para a Croácia nos pênaltis")
-    assert all(period is None for period in cnn.periods)
+    assert all(period is None for period in veja.periods)
 
 
 def test_extra_query_uses_the_words_that_did_not_fit(settings, verification_config, rules):

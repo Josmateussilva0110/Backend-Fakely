@@ -12,6 +12,10 @@ from app.services.text_processing_service import (
 )
 
 _SENTENCE_SPLIT_PATTERN = re.compile(r"(?<=[.!?])\s+|\n+")
+# Emojis fecham um pensamento na mensagem ("caiu agora 😱 quem tiver parente avisa")
+_EMOJI_PATTERN = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]+")
+# Vírgula entre orações, não a decimal ("5,35 metros")
+_CLAUSE_SPLIT_PATTERN = re.compile(r"(?<!\d)\s*,\s*|\s*,\s*(?!\d)")
 # Em perguntas como "era da Voepass ou da Latam?", a alternativa depois do "ou" não é a afirmação
 _ALTERNATIVE_PATTERN = re.compile(r"\s+ou\s+", re.IGNORECASE)
 _LEADING_PUNCTUATION = " ,:;!-–—"
@@ -21,6 +25,8 @@ MIN_CONTENT_WORD_LENGTH = 4
 MIN_TITLE_CONTENT_WORDS = 3
 # Rótulo antes de dois-pontos ("Atenção aposentados:") com até esse número de palavras
 LABEL_MAX_WORDS = 4
+# Rótulo de fala antes de dois-pontos ("Minha cunhada é médica e falou:") com até esse número de palavras
+SPEECH_LABEL_MAX_WORDS = 8
 PROPER_NOUN_BONUS = 2
 NUMBER_BONUS = 1
 CALL_TO_ACTION_PENALTY = 3
@@ -66,7 +72,9 @@ class ClaimExtractionService:
         return has_number or self._specific_words(title) > 0
 
     def split_sentences(self, text: str) -> list[str]:
-        return [self._clean(part) for part in _SENTENCE_SPLIT_PATTERN.split(text) if part.strip()]
+        text = _EMOJI_PATTERN.sub("\n", text)
+        parts = (self._clean(part) for part in _SENTENCE_SPLIT_PATTERN.split(text))
+        return [part for part in parts if part]
 
     def score_sentence(self, sentence: str) -> int:
         """Frases com nomes próprios, siglas, números e termos específicos tendem a ser verificáveis."""
@@ -88,9 +96,27 @@ class ClaimExtractionService:
             claim = _ALTERNATIVE_PATTERN.split(claim)[0].rstrip(" ?!.")
             if claim.lower().endswith(_TRAILING_QUESTION_WORD):
                 claim = claim[: -len(_TRAILING_QUESTION_WORD)]
+        claim = self._cut_tail(claim, is_message=claim != original)
         if not claim:
             return original
         return claim[0].upper() + claim[1:] if claim != original else claim
+
+    def _cut_tail(self, claim: str, is_message: bool) -> str:
+        """Tira o que vem depois do fato: pedidos ao leitor e, em mensagem de conversa, o comentário.
+
+        Em mensagem ("Graças a Deus o Faustão fez o transplante, deu tudo certo") o fato é a primeira
+        oração; em texto de notícia as vírgulas costumam ser do próprio fato ("A barragem da mina
+        Córrego do Feijão, da Vale, rompeu"), então só saem os pedidos ("..., saquem o dinheiro").
+        """
+        parts = [part for part in _CLAUSE_SPLIT_PATTERN.split(claim) if part]
+        if len(parts) < 2:
+            return claim
+        if is_message and self.is_long_enough(parts[0]):
+            return parts[0].rstrip(" .!")
+        while len(parts) > 1 and find_terms(normalize_text(parts[-1]), self.rules.call_to_action_terms):
+            parts.pop()
+        head = ", ".join(parts)
+        return head.rstrip(" .!") if head != claim and self.is_long_enough(head) else claim
 
     def _candidate_sentences(self, text: str) -> list[str]:
         return [
@@ -112,7 +138,12 @@ class ClaimExtractionService:
     def _label_length(self, sentence: str) -> int:
         head, separator, _ = sentence.partition(":")
         label_words = WORD_PATTERN.findall(head)
-        if not separator or not 0 < len(label_words) <= LABEL_MAX_WORDS:
+        if not separator or not label_words:
+            return 0
+        # "Minha cunhada é médica e falou: a cloroquina cura..." : quem fala não é a afirmação
+        if len(label_words) <= SPEECH_LABEL_MAX_WORDS and normalize_text(label_words[-1]) in self.rules.speech_verbs:
+            return len(label_words)
+        if len(label_words) > LABEL_MAX_WORDS:
             return 0
         return len(label_words) if find_terms(normalize_text(head), self.label_terms) else 0
 

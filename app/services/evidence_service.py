@@ -338,7 +338,8 @@ class EvidenceService:
         groups = [self.premise_sentences(candidate.result) for candidate in candidates]
         flat = [sentence for group in groups for sentence in group]
         results = iter(self.run_model(flat, hypothesis))
-        return [round(max(next(results) for _ in group), 3) for group in groups]
+        # Só perguntas, nada afirmado: nota zero
+        return [round(max((next(results) for _ in group), default=0.0), 3) for group in groups]
 
     def score_rumors(self, candidates: list[Candidate], hypothesis: str) -> list[float]:
         """A afirmação implica o boato que a checagem julgou falso (ou verdadeiro)?
@@ -349,7 +350,13 @@ class EvidenceService:
         e o modelo dá nota baixa justamente quando a checagem é sobre a afirmação.
         """
         rumors = [self.rumor(c.result.title, c.verdict) for c in candidates]
-        return [round(self.run_model([hypothesis], rumor)[0], 3) for rumor in rumors]
+        # Vale a menor das duas direções: o modelo viu 0,92 de "OMS declarou emergência por causa da
+        # mpox" para "OMS decretou lockdown por causa de Mpox", mas o lockdown não implica a emergência.
+        # Só uma checagem que diz o mesmo que a afirmação pode desmenti-la
+        return [
+            round(min(self.run_model([hypothesis], rumor)[0], self.run_model([rumor], hypothesis)[0]), 3)
+            for rumor in rumors
+        ]
 
     def rumor(self, title: str, verdict: Verdict | None) -> str:
         """Afirmação julgada pela checagem: "É falso que X" vira "X"; "X não Y" (desmentido) vira "X Y"."""
@@ -372,6 +379,14 @@ class EvidenceService:
             return required.covered_strictly_by(title_stems)
         return required.covered_by(title_stems, self.settings.evidence_min_name_share)
 
+    def names_allow_verdict(self, candidate: Candidate) -> bool:
+        """Checagem sem todos os nomes da afirmação só decide se a manchete é praticamente a afirmação.
+
+        Sem os nomes o modelo nem compara, e a semelhança de palavras decidia sozinha: "É falso que
+        Beatriz Souza dedicou medalha de ouro no judô a Bolsonaro" (0,71) desmentia o ouro dela.
+        """
+        return candidate.names_covered or candidate.relevance >= self.settings.evidence_identical_relevance
+
     def same_polarity(self, title: str, rumor: str | None, claim_negated: bool) -> bool:
         """O boato julgado diz o fato no mesmo sentido da afirmação; só se sabe quando a manchete o apresenta.
 
@@ -391,9 +406,19 @@ class EvidenceService:
             self.inference_slots.release()
 
     def premise_sentences(self, result: SearchResult) -> list[str]:
+        """Manchete e frases do resumo que afirmam algo; pergunta não sustenta nada.
+
+        "Como a Receita vai monitorar o Pix acima de R$ 5 mil? Entenda as mudanças" teve 0,64 de
+        implicação para "Receita vai cobrar imposto do Pix", e o resumo dizia que não há taxa.
+        """
         excerpt = result.excerpt[: self.settings.evidence_excerpt_max_length]
+        title_parts = [part.strip() for part in _PREMISE_SPLIT_PATTERN.split(result.title)]
+        title = [result.title] if not any(part.endswith("?") for part in title_parts) else []
         sentences = [part.strip() for part in _PREMISE_SPLIT_PATTERN.split(excerpt)]
-        return [result.title, *(s for s in sentences if len(s.split()) >= MIN_PREMISE_SENTENCE_WORDS)]
+        return [
+            *title,
+            *(s for s in sentences if len(s.split()) >= MIN_PREMISE_SENTENCE_WORDS and not s.endswith("?")),
+        ]
 
     def premise(self, result: SearchResult) -> str:
         # O resumo completa a manchete: "Paquetá aprova empate do Flamengo com o Estudiantes"
@@ -443,7 +468,7 @@ class EvidenceService:
                 entailment,
                 denial=self.is_denial(result.title, claim_text),
                 out_of_window=out_of_window,
-                same_fact=candidate.is_same_fact,
+                same_fact=candidate.is_same_fact and self.names_allow_verdict(candidate),
             ),
             verdict=verdict,
             independent=True,
